@@ -45,7 +45,9 @@ class TestEntityFilter:
 
     def test_should_filter_too_long(self, filter):
         """测试过滤过长实体"""
-        long_entity = "这是一个非常非常长的实体名称超过了五十个字符的限制应该被过滤掉的测试用例数据"
+        # 生成一个超过50个字符的实体名
+        long_entity = "这是一个非常非常长的实体名称超过了五十个字符的限制应该被过滤掉的测试用例数据内容补充内容更多字符串数据"
+        assert len(long_entity) > 50  # 确保长度超过50
         assert filter.should_filter(long_entity) is True
 
     def test_should_not_filter_valid(self, filter):
