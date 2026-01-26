@@ -1,5 +1,12 @@
 # Environment variables
 .env
+.env.local
+.env.*.local
+
+# Docker override files (在任何目录下)
+docker-compose.override.yml
+**/docker-compose.langfuse.yml
+docker-compose.langfuse.yml
 
 # Python
 __pycache__/
