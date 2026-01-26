@@ -31,23 +31,23 @@ ENTITY_EXTRACTION_PROMPT = """你是一个知识图谱实体提取专家。请�
    - 如果实体名超过10字，提取核心词
 
 ## 输出格式（JSON）：
-{
+{{
   "entities": [
-    {"name": "实体名", "type": "Person|Book|Concept|Strategy|Metric|Group|Entity"}
+    {{"name": "实体名", "type": "Person|Book|Concept|Strategy|Metric|Group|Entity"}}
   ]
-}
+}}
 
 ## 示例：
 输入文本："李笑来在《让时间陪你慢慢变富》中主张定投策略，认为定投适用于普通人。"
 输出：
-{
+{{
   "entities": [
-    {"name": "李笑来", "type": "Person"},
-    {"name": "让时间陪你慢慢变富", "type": "Book"},
-    {"name": "定投", "type": "Strategy"},
-    {"name": "普通人", "type": "Group"}
+    {{"name": "李笑来", "type": "Person"}},
+    {{"name": "让时间陪你慢慢变富", "type": "Book"}},
+    {{"name": "定投", "type": "Strategy"}},
+    {{"name": "普通人", "type": "Group"}}
   ]
-}
+}}
 
 ## 待提取文本：
 {text}
@@ -81,22 +81,22 @@ RELATION_EXTRACTION_PROMPT = """你是一个知识图谱关系提取专家。请
    - 确保源实体和目标实体都已提取
 
 ## 输出格式（JSON）：
-{
+{{
   "relations": [
-    {"source": "源实体名", "target": "目标实体名", "relation": "关系词"}
+    {{"source": "源实体名", "target": "目标实体名", "relation": "关系词"}}
   ]
-}
+}}
 
 ## 示例：
 输入文本："李笑来在《让时间陪你慢慢变富》中主张定投策略，认为定投适用于普通人。"
 输出：
-{
+{{
   "relations": [
-    {"source": "李笑来", "target": "让时间陪你慢慢变富", "relation": "著作"},
-    {"source": "让时间陪你慢慢变富", "target": "定投", "relation": "主张"},
-    {"source": "定投", "target": "普通人", "relation": "适用于"}
+    {{"source": "李笑来", "target": "让时间陪你慢慢变富", "relation": "著作"}},
+    {{"source": "让时间陪你慢慢变富", "target": "定投", "relation": "主张"}},
+    {{"source": "定投", "target": "普通人", "relation": "适用于"}}
   ]
-}
+}}
 
 ## 待提取文本：
 {text}

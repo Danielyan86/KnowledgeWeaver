@@ -23,6 +23,7 @@ Used in README files for quick reference.
 ### Setup & Configuration
 
 - `GEMINI_SETUP.md` - Google Gemini API setup guide
+- `LANGFUSE_GUIDE.md` - Langfuse observability platform complete guide
 - `claude.md` - Claude Code project configuration and usage guide
 
 ### Architecture & Design

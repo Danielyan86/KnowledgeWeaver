@@ -78,7 +78,7 @@ KnowledgeWeaver/
 │
 ├── docs/                         # 文档
 │   ├── NEO4J_GUIDE.md           # Neo4j 使用指南
-│   ├── LANGFUSE_*.md            # Langfuse 相关文档
+│   ├── LANGFUSE_GUIDE.md        # Langfuse 完整指南
 │   ├── architecture-*.png       # 架构图
 │   └── *.md                     # 其他文档
 │

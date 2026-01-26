@@ -92,66 +92,81 @@ class KnowledgeGraph {
         this.height = height;
     }
 
-    async loadGraph() {
+    async loadGraph(useFilter = false) {
         try {
-            // First, get popular labels
-            const labelsResponse = await fetch(buildApiUrl(CONFIG.ENDPOINTS.GRAPH_POPULAR) + '?limit=30');
-            if (!labelsResponse.ok) {
-                throw new Error(`Failed to get labels: ${labelsResponse.status}`);
-            }
-            const labels = await labelsResponse.json();
+            let data;
 
-            if (!labels || labels.length === 0) {
-                console.log('No graph labels found');
+            if (useFilter) {
+                // 标签过滤模式（用于概览）
+                const labelsResponse = await fetch(buildApiUrl(CONFIG.ENDPOINTS.GRAPH_POPULAR) + '?limit=30');
+                if (!labelsResponse.ok) {
+                    throw new Error(`Failed to get labels: ${labelsResponse.status}`);
+                }
+                const labels = await labelsResponse.json();
+
+                if (!labels || labels.length === 0) {
+                    console.log('No graph labels found');
+                    return false;
+                }
+
+                // Fetch graph data for top labels and merge them
+                const allNodes = new Map();
+                const allEdges = [];
+                const seenEdges = new Set();
+
+                const labelsToFetch = labels.slice(0, 15);
+                const graphPromises = labelsToFetch.map(label =>
+                    fetch(buildApiUrl(CONFIG.ENDPOINTS.GRAPH) + `?label=${encodeURIComponent(label)}`)
+                        .then(res => res.ok ? res.json() : null)
+                        .catch(() => null)
+                );
+
+                const graphResults = await Promise.all(graphPromises);
+
+                graphResults.forEach(result => {
+                    if (!result) return;
+
+                    if (result.nodes && Array.isArray(result.nodes)) {
+                        result.nodes.forEach(node => {
+                            const nodeId = node.id || node.labels?.[0];
+                            if (nodeId && !allNodes.has(nodeId)) {
+                                allNodes.set(nodeId, node);
+                            }
+                        });
+                    }
+
+                    if (result.edges && Array.isArray(result.edges)) {
+                        result.edges.forEach(edge => {
+                            const edgeKey = `${edge.source}-${edge.target}`;
+                            if (!seenEdges.has(edgeKey)) {
+                                seenEdges.add(edgeKey);
+                                allEdges.push(edge);
+                            }
+                        });
+                    }
+                });
+
+                data = {
+                    nodes: Array.from(allNodes.values()),
+                    edges: allEdges
+                };
+            } else {
+                // 完整图谱模式（默认）
+                const response = await fetch(buildApiUrl(CONFIG.ENDPOINTS.GRAPH));
+                if (!response.ok) {
+                    throw new Error(`Failed to load graph: ${response.status}`);
+                }
+                data = await response.json();
+            }
+
+            if (!data || !data.nodes || data.nodes.length === 0) {
+                console.log('No graph data available');
                 return false;
             }
 
-            // Fetch graph data for top labels and merge them
-            const allNodes = new Map();
-            const allEdges = [];
-            const seenEdges = new Set();
+            console.log(`Loaded graph: ${data.nodes.length} nodes, ${data.edges?.length || 0} edges`);
 
-            // Fetch graphs for multiple labels in parallel (limit to avoid too many requests)
-            const labelsToFetch = labels.slice(0, 15);
-            const graphPromises = labelsToFetch.map(label =>
-                fetch(buildApiUrl(CONFIG.ENDPOINTS.GRAPH) + `?label=${encodeURIComponent(label)}`)
-                    .then(res => res.ok ? res.json() : null)
-                    .catch(() => null)
-            );
-
-            const graphResults = await Promise.all(graphPromises);
-
-            graphResults.forEach(data => {
-                if (!data) return;
-
-                // Process nodes
-                if (data.nodes && Array.isArray(data.nodes)) {
-                    data.nodes.forEach(node => {
-                        const nodeId = node.id || node.labels?.[0];
-                        if (nodeId && !allNodes.has(nodeId)) {
-                            allNodes.set(nodeId, node);
-                        }
-                    });
-                }
-
-                // Process edges
-                if (data.edges && Array.isArray(data.edges)) {
-                    data.edges.forEach(edge => {
-                        const edgeKey = `${edge.source}-${edge.target}`;
-                        if (!seenEdges.has(edgeKey)) {
-                            seenEdges.add(edgeKey);
-                            allEdges.push(edge);
-                        }
-                    });
-                }
-            });
-
-            const mergedData = {
-                nodes: Array.from(allNodes.values()),
-                edges: allEdges
-            };
-
-            this.processGraphData(mergedData);
+            this.processGraphData(data);
             this.render();
             return true;
         } catch (error) {
@@ -835,6 +850,22 @@ class KnowledgeGraph {
 
     getLinkCount() {
         return this.links.length;
+    }
+
+    setData(nodes, edges) {
+        /**
+         * 直接设置图谱数据并渲染
+         * 用于从外部加载特定文档的图谱
+         */
+        const data = {
+            nodes: nodes || [],
+            edges: edges || []
+        };
+
+        console.log(`Setting graph data: ${data.nodes.length} nodes, ${data.edges.length} edges`);
+
+        this.processGraphData(data);
+        this.render();
     }
 }
 

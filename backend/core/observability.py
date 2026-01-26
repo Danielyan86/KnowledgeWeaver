@@ -106,10 +106,15 @@ class LangfuseTracer:
             from langfuse.openai import OpenAI as LangfuseOpenAI
 
             # 将现有客户端的配置传递给 Langfuse wrapper
+            # LangfuseOpenAI 会自动从环境变量读取 Langfuse 配置
             wrapped_client = LangfuseOpenAI(
                 base_url=client.base_url,
                 api_key=client.api_key
             )
+            # 保存内部 Langfuse 客户端的引用，用于 flush
+            # LangfuseOpenAI 的内部客户端可通过 wrapped_client.langfuse 访问
+            if hasattr(wrapped_client, 'langfuse'):
+                self.openai_langfuse_client = wrapped_client.langfuse
             print("✅ OpenAI 客户端已包装 Langfuse 追踪")
             return wrapped_client
         except Exception as e:
@@ -118,9 +123,14 @@ class LangfuseTracer:
 
     def flush(self):
         """刷新缓存，确保数据发送到 Langfuse"""
-        if self.enabled and self.client:
+        if self.enabled:
             try:
-                self.client.flush()
+                # 刷新主 Langfuse 客户端
+                if self.client:
+                    self.client.flush()
+                # 刷新 OpenAI wrapper 的内部 Langfuse 客户端
+                if hasattr(self, 'openai_langfuse_client') and self.openai_langfuse_client:
+                    self.openai_langfuse_client.flush()
             except Exception as e:
                 print(f"⚠️ Langfuse flush 失败: {e}")
 

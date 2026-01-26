@@ -89,6 +89,5 @@ LANGFUSE_ENABLED=false
 ## 📚 下一步
 
 查看详细文档了解更多功能：
-- [完整集成指南](./docs/LANGFUSE_INTEGRATION.md)
-- [最佳实践](./docs/LANGFUSE_BEST_PRACTICES.md)
-- [自托管部署](./docs/LANGFUSE_INTEGRATION.md#方案-b-自托管-langfuse推荐)
+
+- [完整指南](./LANGFUSE_GUIDE.md) - 包含集成方案、最佳实践和自托管部署

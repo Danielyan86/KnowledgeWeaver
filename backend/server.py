@@ -251,6 +251,10 @@ async def ask_question(request: QARequest):
             top_k=request.top_k
         )
 
+        # 刷新 Langfuse 追踪，确保数据立即发送
+        from .core.observability import get_tracer
+        get_tracer().flush()
+
         return QAResponse(
             answer=response.answer,
             sources=SourceInfo(
