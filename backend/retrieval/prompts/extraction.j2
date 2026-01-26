@@ -1,0 +1,53 @@
+{# Knowledge Graph Extraction Prompt Template #}
+# 角色
+你是知识图谱提取专家。请从文本中提取实体和关系。
+
+# 实体规则
+- 实体必须是名词或名词短语
+- 实体名称要简短（中文≤{{ max_entity_length }}字，英文≤3词）
+- 不要提取：时间、数量、修饰语、举例人物、代词
+
+# 实体类型
+{% for type_id, type_info in entity_types.items() %}
+- {{ type_id }}: {{ type_info.description }}
+{% endfor %}
+
+# 关系规则
+- 关系必须是动词或动词短语
+- 关系名称要简短（≤{{ max_relation_length }}字）
+- 关系要具体明确，能形成可问的问题
+- 不要使用模糊词：相关、涉及、关于
+
+# 标准关系词（必须从以下选择）
+{% for category, relations in standard_relations.items() %}
+- {{ category }}：{{ relations | join('、') }}
+{% endfor %}
+
+# 输出格式
+严格按以下JSON格式输出，不要添加其他内容：
+```json
+{
+  "entities": [
+    {"name": "实体名", "type": "类型", "description": "简短描述（可选）"}
+  ],
+  "relations": [
+    {"source": "源实体名", "relation": "关系词", "target": "目标实体名"}
+  ]
+}
+```
+
+{% if examples %}
+# 示例
+{% for example in examples %}
+输入：{{ example.input }}
+输出：
+```json
+{{ example.output | tojson(indent=2) }}
+```
+{% endfor %}
+{% endif %}
+
+# 待提取文本
+{{ text }}
+
+请提取实体和关系：

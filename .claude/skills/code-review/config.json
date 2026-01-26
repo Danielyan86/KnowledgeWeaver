@@ -1,0 +1,87 @@
+{
+  "version": "1.0.0",
+  "defaults": {
+    "severity_levels": {
+      "critical": ["security", "architecture"],
+      "major": ["solid", "clean_code", "performance"],
+      "minor": ["naming", "formatting", "comments"]
+    },
+    "auto_run_tests": true,
+    "test_commands": {
+      "python": ["pytest -v", "python -m unittest discover"],
+      "javascript": ["npm test", "yarn test"],
+      "typescript": ["npm test", "yarn test"],
+      "java": ["mvn test", "gradle test"],
+      "go": ["go test ./..."]
+    },
+    "max_issues_per_category": 10,
+    "include_positive_feedback": true,
+    "provide_code_examples": true
+  },
+  "focus_areas": {
+    "clean_code": {
+      "enabled": true,
+      "weight": "high",
+      "checks": [
+        "naming",
+        "function_length",
+        "parameter_count",
+        "comments",
+        "code_structure"
+      ]
+    },
+    "clean_architecture": {
+      "enabled": true,
+      "weight": "high",
+      "checks": [
+        "layering",
+        "dependency_direction",
+        "boundary_clarity"
+      ]
+    },
+    "solid": {
+      "enabled": true,
+      "weight": "high",
+      "checks": [
+        "srp",
+        "ocp",
+        "lsp",
+        "isp",
+        "dip"
+      ]
+    },
+    "design_patterns": {
+      "enabled": true,
+      "weight": "medium"
+    },
+    "performance": {
+      "enabled": true,
+      "weight": "medium"
+    },
+    "security": {
+      "enabled": true,
+      "weight": "critical"
+    },
+    "testing": {
+      "enabled": true,
+      "weight": "high"
+    },
+    "code_style": {
+      "enabled": true,
+      "weight": "low"
+    }
+  },
+  "thresholds": {
+    "function_max_lines": 30,
+    "function_max_params": 5,
+    "max_nesting_depth": 3,
+    "cyclomatic_complexity": 10,
+    "min_test_coverage": 80
+  },
+  "output": {
+    "format": "markdown",
+    "include_metrics": true,
+    "include_examples": true,
+    "verbosity": "detailed"
+  }
+}

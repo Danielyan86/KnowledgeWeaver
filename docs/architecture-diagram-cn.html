@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KnowledgeWeaver 系统架构</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 40px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        #diagram {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            padding: 40px;
+        }
+
+        .node {
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .node:hover {
+            transform: translateY(-2px);
+        }
+
+        .node rect {
+            filter: drop-shadow(0 4px 6px rgba(0,0,0,0.1));
+        }
+
+        .node text {
+            pointer-events: none;
+            font-weight: 600;
+        }
+
+        .link {
+            fill: none;
+            stroke-width: 2.5;
+            opacity: 0.7;
+        }
+
+        .link.solid {
+            stroke: #667eea;
+        }
+
+        .link.dashed {
+            stroke: #f093fb;
+            stroke-dasharray: 8, 4;
+        }
+
+        .group-box {
+            fill: none;
+            stroke: #e0e0e0;
+            stroke-width: 2;
+            rx: 15;
+            stroke-dasharray: 10, 5;
+            opacity: 0.6;
+        }
+
+        .group-label {
+            font-size: 14px;
+            font-weight: 700;
+            fill: #666;
+            letter-spacing: 2px;
+        }
+
+        .title {
+            font-size: 32px;
+            font-weight: 700;
+            fill: #333;
+            text-anchor: middle;
+        }
+
+        .subtitle {
+            font-size: 16px;
+            fill: #666;
+            text-anchor: middle;
+        }
+
+        .arrow {
+            fill: #667eea;
+        }
+
+        .arrow.dashed {
+            fill: #f093fb;
+        }
+    </style>
+</head>
+<body>
+    <div id="diagram"></div>
+
+    <script>
+        const width = 1400;
+        const height = 800;
+
+        const svg = d3.select('#diagram')
+            .append('svg')
+            .attr('width', width)
+            .attr('height', height);
+
+        // Define arrow markers
+        svg.append('defs').selectAll('marker')
+            .data(['arrow', 'arrow-dashed'])
+            .enter().append('marker')
+            .attr('id', d => d)
+            .attr('viewBox', '0 0 10 10')
+            .attr('refX', 9)
+            .attr('refY', 5)
+            .attr('markerWidth', 6)
+            .attr('markerHeight', 6)
+            .attr('orient', 'auto')
+            .append('path')
+            .attr('d', 'M 0 0 L 10 5 L 0 10 z')
+            .attr('class', d => d === 'arrow-dashed' ? 'arrow dashed' : 'arrow');
+
+        // Title
+        svg.append('text')
+            .attr('class', 'title')
+            .attr('x', width / 2)
+            .attr('y', 40)
+            .text('KnowledgeWeaver 系统架构');
+
+        svg.append('text')
+            .attr('class', 'subtitle')
+            .attr('x', width / 2)
+            .attr('y', 65)
+            .text('知识图谱 + RAG 混合问答系统');
+
+        // Define colors
+        const colors = {
+            input: '#667eea',
+            process: '#4ecdc4',
+            extract: '#ff6b6b',
+            merge: '#45b7d1',
+            normalize: '#96ceb4',
+            storage: '#ffeaa7',
+            chroma: '#dda0dd',
+            api: '#9b59b6',
+            retriever: '#20b2aa',
+            qa: '#ff8c00',
+            view: '#3498db',
+            chat: '#32cd32',
+            external: '#f39c12',
+            embedding: '#ff69b4'
+        };
+
+        // Group definitions
+        const groups = [
+            {id: 'input', x: 50, y: 100, width: 150, height: 200, label: '输入层'},
+            {id: 'process', x: 230, y: 100, width: 520, height: 200, label: '处理层'},
+            {id: 'storage', x: 780, y: 100, width: 180, height: 200, label: '存储层'},
+            {id: 'service', x: 990, y: 100, width: 360, height: 300, label: '服务层'},
+            {id: 'frontend', x: 50, y: 500, width: 680, height: 200, label: '前端层'},
+            {id: 'external', x: 760, y: 500, width: 590, height: 200, label: '外部API'}
+        ];
+
+        // Draw groups
+        svg.selectAll('.group-box')
+            .data(groups)
+            .enter().append('rect')
+            .attr('class', 'group-box')
+            .attr('x', d => d.x)
+            .attr('y', d => d.y)
+            .attr('width', d => d.width)
+            .attr('height', d => d.height);
+
+        svg.selectAll('.group-label')
+            .data(groups)
+            .enter().append('text')
+            .attr('class', 'group-label')
+            .attr('x', d => d.x + 10)
+            .attr('y', d => d.y - 8)
+            .text(d => d.label);
+
+        // Node definitions
+        const nodes = [
+            // Input
+            {id: 'doc', x: 100, y: 180, width: 100, height: 60, label: '文档\ntxt/pdf', color: colors.input, shape: 'cylinder'},
+
+            // Processing
+            {id: 'chunk', x: 280, y: 180, width: 90, height: 60, label: '分块', color: colors.process},
+            {id: 'extract', x: 400, y: 150, width: 110, height: 60, label: 'LLM提取\n实体+关系', color: colors.extract},
+            {id: 'merge', x: 540, y: 150, width: 80, height: 60, label: '合并', color: colors.merge},
+            {id: 'normalize', x: 650, y: 150, width: 90, height: 60, label: '规范化', color: colors.normalize},
+
+            // Storage
+            {id: 'json', x: 800, y: 150, width: 100, height: 60, label: 'JSON\n图谱文件', color: colors.storage, shape: 'cylinder'},
+            {id: 'chroma', x: 800, y: 230, width: 100, height: 60, label: 'ChromaDB\n向量库', color: colors.chroma, shape: 'cylinder'},
+
+            // Embedding
+            {id: 'embedding', x: 450, y: 400, width: 100, height: 60, label: '向量化', color: colors.embedding},
+
+            // Service
+            {id: 'api', x: 1030, y: 180, width: 90, height: 60, label: 'FastAPI', color: colors.api},
+            {id: 'retriever', x: 1160, y: 230, width: 90, height: 60, label: '混合\n检索器', color: colors.retriever},
+            {id: 'qa', x: 1160, y: 310, width: 90, height: 60, label: 'QA引擎', color: colors.qa},
+
+            // Frontend
+            {id: 'd3graph', x: 100, y: 570, width: 100, height: 60, label: 'D3.js\n力导向图', color: colors.view},
+            {id: 'chat', x: 250, y: 570, width: 100, height: 60, label: '聊天界面', color: colors.chat},
+
+            // External
+            {id: 'llmapi', x: 950, y: 570, width: 200, height: 60, label: 'space.ai-builders.com', color: colors.external, shape: 'hexagon'}
+        ];
+
+        // Draw nodes
+        const nodeGroup = svg.selectAll('.node')
+            .data(nodes)
+            .enter().append('g')
+            .attr('class', 'node')
+            .attr('transform', d => `translate(${d.x}, ${d.y})`);
+
+        nodeGroup.each(function(d) {
+            const node = d3.select(this);
+
+            if (d.shape === 'cylinder') {
+                // Cylinder shape
+                const rx = d.width / 2;
+                const ry = 8;
+
+                node.append('ellipse')
+                    .attr('cx', d.width / 2)
+                    .attr('cy', ry)
+                    .attr('rx', rx)
+                    .attr('ry', ry)
+                    .attr('fill', d.color)
+                    .attr('stroke', d3.rgb(d.color).darker(0.5))
+                    .attr('stroke-width', 2);
+
+                node.append('rect')
+                    .attr('x', 0)
+                    .attr('y', ry)
+                    .attr('width', d.width)
+                    .attr('height', d.height - ry)
+                    .attr('fill', d.color)
+                    .attr('stroke', d3.rgb(d.color).darker(0.5))
+                    .attr('stroke-width', 2);
+
+                node.append('ellipse')
+                    .attr('cx', d.width / 2)
+                    .attr('cy', d.height)
+                    .attr('rx', rx)
+                    .attr('ry', ry)
+                    .attr('fill', d.color)
+                    .attr('stroke', d3.rgb(d.color).darker(0.5))
+                    .attr('stroke-width', 2);
+
+            } else if (d.shape === 'hexagon') {
+                // Hexagon shape
+                const points = [
+                    [20, 0],
+                    [d.width - 20, 0],
+                    [d.width, d.height / 2],
+                    [d.width - 20, d.height],
+                    [20, d.height],
+                    [0, d.height / 2]
+                ];
+
+                node.append('polygon')
+                    .attr('points', points.map(p => p.join(',')).join(' '))
+                    .attr('fill', d.color)
+                    .attr('stroke', d3.rgb(d.color).darker(0.5))
+                    .attr('stroke-width', 2)
+                    .attr('rx', 8);
+
+            } else {
+                // Rectangle (default)
+                node.append('rect')
+                    .attr('width', d.width)
+                    .attr('height', d.height)
+                    .attr('rx', 8)
+                    .attr('fill', d.color)
+                    .attr('stroke', d3.rgb(d.color).darker(0.5))
+                    .attr('stroke-width', 2);
+            }
+
+            // Add text
+            const lines = d.label.split('\n');
+            const textGroup = node.append('text')
+                .attr('x', d.width / 2)
+                .attr('y', d.height / 2)
+                .attr('text-anchor', 'middle')
+                .attr('dominant-baseline', 'central')
+                .attr('fill', d.color === colors.storage || d.color === colors.chroma ? '#333' : 'white')
+                .attr('font-size', '14px');
+
+            if (lines.length === 1) {
+                textGroup.text(lines[0]);
+            } else {
+                lines.forEach((line, i) => {
+                    textGroup.append('tspan')
+                        .attr('x', d.width / 2)
+                        .attr('dy', i === 0 ? -(lines.length - 1) * 7 : 14)
+                        .text(line);
+                });
+            }
+        });
+
+        // Links
+        const links = [
+            // Main flow
+            {from: 'doc', to: 'chunk', type: 'solid'},
+            {from: 'chunk', to: 'extract', type: 'solid'},
+            {from: 'extract', to: 'merge', type: 'solid'},
+            {from: 'merge', to: 'normalize', type: 'solid'},
+            {from: 'normalize', to: 'json', type: 'solid'},
+
+            // Embedding flow
+            {from: 'chunk', to: 'embedding', type: 'solid'},
+            {from: 'embedding', to: 'chroma', type: 'solid'},
+
+            // Storage to API
+            {from: 'json', to: 'api', type: 'solid'},
+            {from: 'chroma', to: 'api', type: 'solid'},
+
+            // API flow
+            {from: 'api', to: 'd3graph', type: 'solid'},
+            {from: 'api', to: 'retriever', type: 'solid'},
+            {from: 'retriever', to: 'qa', type: 'solid'},
+            {from: 'qa', to: 'chat', type: 'solid'},
+
+            // External API calls (dashed)
+            {from: 'extract', to: 'llmapi', type: 'dashed'},
+            {from: 'embedding', to: 'llmapi', type: 'dashed'},
+            {from: 'qa', to: 'llmapi', type: 'dashed'}
+        ];
+
+        // Draw links
+        const linkGroup = svg.insert('g', '.node')
+            .attr('class', 'links');
+
+        links.forEach(link => {
+            const source = nodes.find(n => n.id === link.from);
+            const target = nodes.find(n => n.id === link.to);
+
+            const x1 = source.x + source.width / 2;
+            const y1 = source.y + source.height / 2;
+            const x2 = target.x + target.width / 2;
+            const y2 = target.y + target.height / 2;
+
+            // Calculate path
+            const path = d3.path();
+            path.moveTo(x1, y1);
+
+            // Use bezier curves for more elegant connections
+            const dx = x2 - x1;
+            const dy = y2 - y1;
+            const dr = Math.sqrt(dx * dx + dy * dy);
+
+            if (Math.abs(dx) > Math.abs(dy)) {
+                // Horizontal curve
+                const cx = x1 + dx / 2;
+                path.quadraticCurveTo(cx, y1, cx, (y1 + y2) / 2);
+                path.quadraticCurveTo(cx, y2, x2, y2);
+            } else {
+                // Vertical curve
+                const cy = y1 + dy / 2;
+                path.quadraticCurveTo(x1, cy, (x1 + x2) / 2, cy);
+                path.quadraticCurveTo(x2, cy, x2, y2);
+            }
+
+            linkGroup.append('path')
+                .attr('class', `link ${link.type}`)
+                .attr('d', path.toString())
+                .attr('marker-end', `url(#arrow${link.type === 'dashed' ? '-dashed' : ''})`);
+        });
+    </script>
+</body>
+</html>

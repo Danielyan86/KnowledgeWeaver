@@ -1,0 +1,73 @@
+{
+  "max_file_size": 5242880,
+  "run_tests": false,
+  "test_command": "pytest",
+  "ignore_patterns": [
+    ".git",
+    "__pycache__",
+    "*.pyc",
+    ".env",
+    ".env.example",
+    "node_modules",
+    "venv",
+    ".venv",
+    "*.log",
+    "*.min.js",
+    "*.min.css",
+    "dist",
+    "build",
+    ".pytest_cache",
+    ".mypy_cache",
+    "*.egg-info",
+    "lightrag_data",
+    "rag_storage",
+    "data/graphs"
+  ],
+  "secret_patterns": [
+    {
+      "name": "API Key (Generic)",
+      "pattern": "(?i)(api[_-]?key|apikey)\\s*[=:]\\s*['\"]?([a-zA-Z0-9_\\-]{20,})['\"]?",
+      "level": "error"
+    },
+    {
+      "name": "AWS Access Key",
+      "pattern": "AKIA[0-9A-Z]{16}",
+      "level": "error"
+    },
+    {
+      "name": "Private Key",
+      "pattern": "-----BEGIN (RSA |EC |DSA |OPENSSH )?PRIVATE KEY-----",
+      "level": "error"
+    },
+    {
+      "name": "Password in Code",
+      "pattern": "(?i)(password|passwd|pwd)\\s*[=:]\\s*['\"](?![\\s\\*\\{\\}])[^'\"]{4,}['\"]",
+      "level": "error"
+    },
+    {
+      "name": "GitHub Token",
+      "pattern": "gh[pousr]_[A-Za-z0-9_]{36,}",
+      "level": "error"
+    }
+  ],
+  "debug_patterns": [
+    {
+      "name": "Debugger Statement",
+      "pattern": "^\\s*(debugger|breakpoint\\(\\))",
+      "extensions": [".py", ".js", ".ts"],
+      "level": "error"
+    },
+    {
+      "name": "IPython Embed",
+      "pattern": "(?:IPython\\.embed|from IPython import embed)",
+      "extensions": [".py"],
+      "level": "error"
+    },
+    {
+      "name": "PDB Trace",
+      "pattern": "(?:pdb\\.set_trace|import pdb)",
+      "extensions": [".py"],
+      "level": "error"
+    }
+  ]
+}
