@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  phoenix:
+    image: arizephoenix/phoenix:latest
+    container_name: phoenix
+    ports:
+      - "6006:6006"  # Phoenix Web UI
+      - "4317:4317"  # OpenTelemetry gRPC endpoint
+      - "4318:4318"  # OpenTelemetry HTTP endpoint
+    environment:
+      - PHOENIX_WORKING_DIR=/data
+      # 可选：配置数据库连接
+      # - PHOENIX_SQL_DATABASE_URL=postgresql://user:password@postgres:5432/phoenix
+    volumes:
+      - ./data/phoenix:/data
+    restart: unless-stopped
+    networks:
+      - knowledge-weaver
+
+networks:
+  knowledge-weaver:
+    driver: bridge

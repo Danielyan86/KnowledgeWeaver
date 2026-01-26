@@ -9,6 +9,12 @@ tqdm>=4.65.0
 neo4j>=5.0.0
 google-genai>=0.1.0
 langfuse>=2.0.0
+
+# Phoenix (可选 - 用于实验和评估)
+# arize-phoenix>=4.0.0
+# arize-phoenix-otel>=0.1.0
+# openinference-instrumentation-openai>=0.1.0
+
 pytest>=7.4.0
 pytest-asyncio>=0.21.0
 pytest-cov>=4.1.0

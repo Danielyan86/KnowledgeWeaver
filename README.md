@@ -54,6 +54,13 @@ KnowledgeWeaver is an intelligent question-answering system that combines Knowle
 ### External Services
 - **LLM API**: space.ai-builders.com
 
+### Observability (Optional)
+- **Phoenix**: AI observability and evaluation platform (OpenTelemetry-based)
+  - [Integration Guide](docs/PHOENIX_INTEGRATION.md)
+  - [Comparison with Langfuse](docs/OBSERVABILITY_COMPARISON.md)
+- **Langfuse**: LLM observability and monitoring
+  - [Setup Guide](docs/LANGFUSE_GUIDE.md)
+
 ## Quick Start
 
 ### Install Dependencies
