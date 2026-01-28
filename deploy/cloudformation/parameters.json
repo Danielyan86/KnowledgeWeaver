@@ -38,5 +38,9 @@
   {
     "ParameterKey": "CostAlertThreshold",
     "ParameterValue": "5"
+  },
+  {
+    "ParameterKey": "TemplatesBucketName",
+    "ParameterValue": "PLACEHOLDER_BUCKET_NAME"
   }
 ]

@@ -258,3 +258,7 @@ Outputs:
     Value: !Sub '${PrivateSubnet1},${PrivateSubnet2}'
     Export:
       Name: !Sub '${AWS::StackName}-PrivateSubnets'
+
+  StackName:
+    Description: Stack name for cross-stack references
+    Value: !Ref AWS::StackName

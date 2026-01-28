@@ -10,10 +10,21 @@ NC='\033[0m'
 STACK_NAME="knowledgeweaver-production"
 TEMPLATE_FILE="../templates/main.yaml"
 PARAMETERS_FILE="../parameters.json"
+PARAMETERS_TEMP="/tmp/parameters-temp.json"
 REGION=${AWS_REGION:-ap-southeast-2}
 
 echo -e "${YELLOW}🚀 Deploying KnowledgeWeaver Infrastructure with CloudFormation...${NC}"
 echo ""
+
+# Check for S3 bucket name (from environment or file)
+if [ -f /tmp/cfn-bucket-name.txt ]; then
+  S3_BUCKET=$(cat /tmp/cfn-bucket-name.txt)
+  echo -e "${GREEN}✅ Using S3 bucket for templates: $S3_BUCKET${NC}"
+
+  # Replace placeholder in parameters
+  sed "s/PLACEHOLDER_BUCKET_NAME/$S3_BUCKET/g" $PARAMETERS_FILE > $PARAMETERS_TEMP
+  PARAMETERS_FILE=$PARAMETERS_TEMP
+fi
 
 # Check if AWS CLI is configured
 if ! aws sts get-caller-identity &>/dev/null; then
