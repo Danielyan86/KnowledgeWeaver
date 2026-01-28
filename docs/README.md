@@ -1,46 +1,98 @@
 # Documentation
 
-This directory contains architecture diagrams and technical documentation for KnowledgeWeaver.
+This directory contains comprehensive technical documentation for KnowledgeWeaver, organized by topic.
 
-## Architecture Diagrams
+## Directory Structure
 
-### Interactive Diagrams (Recommended)
+```
+docs/
+├── architecture/     # Architecture diagrams and design documents
+├── deployment/       # AWS and deployment guides
+├── database/         # Database setup and optimization guides
+├── observability/    # Monitoring and observability documentation
+├── development/      # Development and testing guides
+└── security/         # Security best practices and guidelines
+```
 
-- `architecture-diagram-cn.html` - Chinese interactive architecture diagram (D3.js)
-- `architecture-diagram-en.html` - English interactive architecture diagram (D3.js)
+## Architecture
 
-Open in browser for interactive visualization with hover effects.
+**Location**: `architecture/`
 
-### Static Images
+### System Architecture
 
-- `architecture-cn.png` - Chinese architecture diagram (PNG, 1.6MB)
-- `architecture-en.png` - English architecture diagram (PNG, 1.6MB)
+- **Interactive Diagrams** (Recommended)
+  - `architecture-diagram-cn.html` - Chinese interactive architecture diagram (D3.js)
+  - `architecture-diagram-en.html` - English interactive architecture diagram (D3.js)
+  - Open in browser for interactive visualization with hover effects
 
-Used in README files for quick reference.
+- **Static Images**
+  - `architecture-cn.png` - Chinese architecture diagram (PNG, 1.6MB)
+  - `architecture-en.png` - English architecture diagram (PNG, 1.6MB)
+  - Used in README files for quick reference
 
-## Technical Documentation
+### AWS Cloud Architecture
 
-### Setup & Configuration
+- **Interactive Diagrams** (Recommended)
+  - `aws-architecture-diagram-cn.html` - Chinese AWS cloud architecture (D3.js)
+  - `aws-architecture-diagram-en.html` - English AWS cloud architecture (D3.js)
+  - Visualizes VPC, subnets, ECS Fargate, Neo4j EC2, and AWS managed services
+  - Open in browser for interactive visualization with hover effects
 
-- `GEMINI_SETUP.md` - Google Gemini API setup guide
+## Deployment
+
+**Location**: `deployment/`
+
+- `AWS_DEPLOYMENT_GUIDE.md` - Complete AWS deployment guide for KnowledgeWeaver
+- `AWS_IAM_CLI_SETUP_GUIDE.md` - AWS IAM and CLI setup instructions
+
+## Database
+
+**Location**: `database/`
+
+- `NEO4J_GUIDE.md` - Neo4j setup, configuration, and graph algorithms guide
+
+## Observability
+
+**Location**: `observability/`
+
 - `LANGFUSE_GUIDE.md` - Langfuse observability platform complete guide
-- `claude.md` - Claude Code project configuration and usage guide
+- `PHOENIX_INTEGRATION.md` - Phoenix integration for LLM observability
+- `OBSERVABILITY_COMPARISON.md` - Comparison of observability solutions
+- `OBSERVABILITY_WORKFLOW.md` - Observability workflow and best practices
+- `TEST_LANGFUSE.md` - Langfuse testing guide
 
-### Architecture & Design
+## Development
 
-- `NEO4J_ALGORITHMS_GUIDE.md` - Neo4j graph algorithms and query optimization
-- `NEO4J_INCREMENTAL_UPDATE.md` - Incremental knowledge graph update strategy
-- `UPGRADE_PLAN.md` - System upgrade and migration plan
+**Location**: `development/`
 
-### Implementation & Testing
+- `PROJECT_STRUCTURE.md` - Project structure and module organization
+- `TEST_SUITE.md` - Testing framework and test suite documentation
 
-- `IMPLEMENTATION_SUMMARY.md` - Implementation summary and feature overview
-- `PERFORMANCE_COMPARISON.md` - Performance comparison (async vs sync processing)
-- `TEST_REPORT.md` - Test results and validation report
-- `REFACTOR_SUMMARY.md` - Directory structure refactoring summary
+## Security
+
+**Location**: `security/`
+
+- `SECURITY_GUIDE.md` - Security best practices and guidelines
+
+## Quick Links
+
+### Getting Started
+1. Start with [Project Structure](development/PROJECT_STRUCTURE.md) to understand the codebase
+2. Review [Architecture Diagrams](architecture/) for system overview
+3. Follow [AWS Deployment Guide](deployment/AWS_DEPLOYMENT_GUIDE.md) for production deployment
+
+### Development
+1. Check [Test Suite](development/TEST_SUITE.md) for testing guidelines
+2. Review [Security Guide](security/SECURITY_GUIDE.md) before implementing features
+
+### Operations
+1. Set up [Neo4j](database/NEO4J_GUIDE.md) for graph database
+2. Configure [Langfuse](observability/LANGFUSE_GUIDE.md) or [Phoenix](observability/PHOENIX_INTEGRATION.md) for observability
+3. Compare [Observability Solutions](observability/OBSERVABILITY_COMPARISON.md) to choose the right tool
 
 ## Notes
 
-- Interactive HTML diagrams provide the best visualization experience
+- All interactive HTML diagrams provide the best visualization experience
 - PNG images are optimized for README display
-- All technical documentation uses Markdown format for easy maintenance
+- All documentation uses Markdown format for easy maintenance and version control
+- Documentation is updated regularly to reflect the latest system changes

@@ -19,7 +19,7 @@ KnowledgeWeaver 是一个结合了知识图谱（Knowledge Graph）和检索增�
 
 ## 系统架构
 
-![系统架构图](docs/architecture-cn.png)
+![系统架构图](docs/architecture/architecture-cn.png)
 
 ### 处理流程
 
@@ -102,10 +102,13 @@ KnowledgeWeaver/
 ├── rag_storage/         # RAG 存储目录
 ├── data/                # 数据目录
 ├── docs/                # 文档
-│   ├── architecture-cn.png      # 架构图（中文）
-│   ├── architecture-en.png      # 架构图（英文）
-│   ├── architecture-diagram-cn.html  # 交互式架构图（中文）
-│   └── architecture-diagram-en.html  # 交互式架构图（英文）
+│   ├── architecture/    # 架构图和设计文档
+│   ├── deployment/      # AWS 和部署指南
+│   ├── database/        # 数据库设置和优化指南
+│   ├── observability/   # 监控和可观测性文档
+│   ├── development/     # 开发和测试指南
+│   ├── security/        # 安全最佳实践和指南
+│   └── README.md        # 文档索引
 └── tests/               # 测试用例
 ```
 

@@ -1,0 +1,15 @@
+variable "project_name" {
+  description = "Project name"
+  type        = string
+}
+
+variable "environment" {
+  description = "Environment name"
+  type        = string
+}
+
+variable "bucket_name" {
+  description = "S3 bucket name (auto-generated if not provided)"
+  type        = string
+  default     = ""
+}

@@ -135,8 +135,31 @@ class EntityContextResponse(BaseModel):
 
 @app.get("/health")
 async def health_check():
-    """健康检查"""
+    """健康检查 - Kubernetes liveness probe"""
     return {"status": "healthy", "timestamp": datetime.now().isoformat()}
+
+
+@app.get("/ready")
+async def readiness_check():
+    """就绪检查 - Kubernetes readiness probe"""
+    try:
+        # 检查Neo4j连接
+        neo4j_ready = kg_manager is not None
+        # 检查向量存储
+        vector_ready = vector_store is not None
+
+        if neo4j_ready and vector_ready:
+            return {
+                "status": "ready",
+                "services": {
+                    "neo4j": "connected",
+                    "vector_store": "connected"
+                }
+            }
+        else:
+            raise HTTPException(status_code=503, detail="Services not ready")
+    except Exception as e:
+        raise HTTPException(status_code=503, detail=f"Not ready: {e}")
 
 
 @app.get("/graph/label/popular", response_model=List[str])
@@ -581,19 +604,10 @@ async def get_document_progress(doc_id: str):
     return progress
 
 
-# 前端静态文件服务
-@app.get("/")
-async def serve_index():
-    """服务前端首页"""
-    index_path = FRONTEND_DIR / "index.html"
-    if index_path.exists():
-        return FileResponse(index_path)
-    raise HTTPException(status_code=404, detail="前端页面不存在")
-
-
-# 挂载静态文件目录
+# 挂载静态文件目录（放在所有API路由之后）
+# 这样API路由优先匹配，静态文件作为fallback
 if FRONTEND_DIR.exists():
-    app.mount("/static", StaticFiles(directory=str(FRONTEND_DIR)), name="static")
+    app.mount("/", StaticFiles(directory=str(FRONTEND_DIR), html=True), name="frontend")
 
 
 # 主程序入口

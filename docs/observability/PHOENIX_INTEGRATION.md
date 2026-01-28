@@ -342,32 +342,75 @@ results = run_experiment(
 print(results.summary())
 ```
 
-## Docker Compose 配置
+## Kubernetes 部署配置
 
-创建 `docker-compose.phoenix.yml`：
+Phoenix 已集成在 Kubernetes 部署中。配置位于 `deploy/kubernetes/base/`。
+
+**Phoenix Deployment 示例：**
 
 ```yaml
-version: '3.8'
-
-services:
-  phoenix:
-    image: arizephoenix/phoenix:latest
-    container_name: phoenix
-    ports:
-      - "6006:6006"  # Phoenix UI
-      - "4317:4317"  # OpenTelemetry gRPC
-      - "4318:4318"  # OpenTelemetry HTTP
-    environment:
-      - PHOENIX_WORKING_DIR=/data
-    volumes:
-      - ./data/phoenix:/data
-    restart: unless-stopped
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: phoenix
+  namespace: knowledgeweaver
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: phoenix
+  template:
+    metadata:
+      labels:
+        app: phoenix
+    spec:
+      containers:
+      - name: phoenix
+        image: arizephoenix/phoenix:latest
+        ports:
+        - containerPort: 6006  # Phoenix UI
+          name: ui
+        - containerPort: 4317  # OpenTelemetry gRPC
+          name: otlp-grpc
+        env:
+        - name: PHOENIX_WORKING_DIR
+          value: /data
+        volumeMounts:
+        - name: phoenix-data
+          mountPath: /data
+      volumes:
+      - name: phoenix-data
+        persistentVolumeClaim:
+          claimName: phoenix-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: phoenix
+  namespace: knowledgeweaver
+spec:
+  selector:
+    app: phoenix
+  ports:
+  - name: ui
+    port: 6006
+    targetPort: 6006
+  - name: otlp-grpc
+    port: 4317
+    targetPort: 4317
 ```
 
-启动：
+**部署：**
 
 ```bash
-docker-compose -f docker-compose.phoenix.yml up -d
+# 开发环境
+kubectl apply -k deploy/kubernetes/overlays/dev
+
+# 生产环境
+kubectl apply -k deploy/kubernetes/overlays/production
+
+# 访问 Phoenix UI（使用端口转发）
+kubectl port-forward svc/phoenix 6006:6006 -n knowledgeweaver
 ```
 
 ## 性能影响

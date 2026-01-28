@@ -38,11 +38,12 @@ cat .gitignore | grep .env
 #### ❌ 错误做法
 
 ```yaml
-# ❌ 不要在 Docker Compose 中硬编码密码
-environment:
-  - DATABASE_URL=postgresql://postgres:postgres@db:5432/langfuse
-  - NEXTAUTH_SECRET=mysecretkey123456789
-  - SALT=mysalt123456789
+# ❌ 不要在 Kubernetes 配置中硬编码密码
+env:
+  - name: DATABASE_URL
+    value: "postgresql://postgres:postgres@db:5432/langfuse"
+  - name: NEXTAUTH_SECRET
+    value: "mysecretkey123456789"
 ```
 
 ```python
@@ -50,32 +51,44 @@ environment:
 api_key = "sk-1234567890abcdef"
 ```
 
-### 2. Docker Compose 安全配置
+### 2. Kubernetes Secrets 安全配置
 
 #### ✅ 正确配置
 
-**docker-compose.langfuse.yml:**
-```yaml
-version: '3.8'
+**创建 Secret:**
+```bash
+# 使用 kubectl 创建 Secret
+kubectl create secret generic app-secrets \
+  --from-literal=database-url='postgresql://user:pass@db:5432/db' \
+  --from-literal=api-key='your-api-key' \
+  --namespace=knowledgeweaver
 
-services:
-  langfuse-server:
-    environment:
-      # 从环境变量读取
-      - DATABASE_URL=${LANGFUSE_DATABASE_URL}
-      - NEXTAUTH_SECRET=${LANGFUSE_NEXTAUTH_SECRET}
-      - SALT=${LANGFUSE_SALT}
-
-  langfuse-db:
-    environment:
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+# 或使用 AWS Secrets Manager
+aws secretsmanager create-secret \
+  --name knowledgeweaver/database-url \
+  --secret-string 'postgresql://user:pass@db:5432/db'
 ```
 
-**使用方法：**
-```bash
-# 1. 确保 .env 文件存在并包含必要变量
-# 2. 启动服务
-docker-compose -f docker-compose.langfuse.yml up -d
+**在 Deployment 中引用:**
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+spec:
+  template:
+    spec:
+      containers:
+      - name: api
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: app-secrets
+              key: database-url
+        - name: API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: app-secrets
+              key: api-key
 ```
 
 ### 3. Git 提交安全
@@ -91,28 +104,35 @@ git commit -m "your message"
 # 如果检测到敏感信息：
 ❌ SENSITIVE INFORMATION DETECTED!
 
-📄 docker-compose.langfuse.yml
-  Line 13: Database Connection String
-    - DATABASE_URL=postgresql://postgres:postgres@...
+📄 deploy/kubernetes/base/deployment.yaml
+  Line 23: Database Connection String or API Key
+    - value: "postgresql://postgres:postgres@..."
 ```
 
 #### 修复步骤
 
-1. **更新文件使用环境变量**
-   ```yaml
-   # 将硬编码密码改为环境变量
-   - DATABASE_URL=${LANGFUSE_DATABASE_URL}
+1. **创建 Kubernetes Secret**
+   ```bash
+   # 创建 Secret（不要提交到 Git）
+   kubectl create secret generic app-secrets \
+     --from-literal=database-url='your-secure-connection-string'
    ```
 
-2. **将敏感值移到 .env**
-   ```bash
-   echo "LANGFUSE_DATABASE_URL=postgresql://postgres:secure_password@db:5432/langfuse" >> .env
+2. **更新 Deployment 使用 Secret**
+   ```yaml
+   # 将硬编码值改为引用 Secret
+   env:
+   - name: DATABASE_URL
+     valueFrom:
+       secretKeyRef:
+         name: app-secrets
+         key: database-url
    ```
 
 3. **再次提交**
    ```bash
    git add .
-   git commit -m "Fix: Use environment variables for sensitive data"
+   git commit -m "Fix: Use Kubernetes Secrets for sensitive data"
    ```
 
 ### 4. 敏感文件清单
@@ -125,9 +145,9 @@ git commit -m "your message"
 .env.local
 .env.*.local
 
-# 包含密码的 Docker Compose
-docker-compose.override.yml
-docker-compose.langfuse.yml  # 如果包含硬编码密码
+# Kubernetes Secrets（本地生成的）
+*-secret.yaml
+secrets/
 
 # 数据库文件
 *.db
@@ -138,13 +158,18 @@ logs/*.log
 
 # 缓存（可能包含 API 响应）
 data/cache/
+
+# AWS/云凭证
+*.pem
+*.key
+kubeconfig*
 ```
 
 #### 可以提交的文件
 
 ```
 ✅ .env.example                    # 示例配置（不含真实值）
-✅ docker-compose.*.example.yml    # 示例配置
+✅ deploy/kubernetes/base/*.yaml   # Kubernetes 基础配置（不含 secrets）
 ✅ .gitignore                      # Git 忽略规则
 ✅ requirements.txt                # 依赖列表
 ```

@@ -1,0 +1,226 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'KnowledgeWeaver - Main CloudFormation Stack (orchestrator)'
+
+Parameters:
+  ProjectName:
+    Type: String
+    Default: knowledgeweaver
+    Description: Project name for resource tagging
+
+  Environment:
+    Type: String
+    Default: production
+    AllowedValues: [production, staging, development]
+    Description: Environment name
+
+  VpcCIDR:
+    Type: String
+    Default: 10.0.0.0/16
+    Description: VPC CIDR block
+
+  ClusterVersion:
+    Type: String
+    Default: '1.28'
+    Description: Kubernetes version
+
+  NodeInstanceType:
+    Type: String
+    Default: t3.medium
+    Description: EC2 instance type for worker nodes
+
+  NodeGroupMinSize:
+    Type: Number
+    Default: 0
+    Description: Minimum number of worker nodes (0 for cost savings)
+
+  NodeGroupMaxSize:
+    Type: Number
+    Default: 5
+    Description: Maximum number of worker nodes
+
+  NodeGroupDesiredSize:
+    Type: Number
+    Default: 2
+    Description: Desired number of worker nodes
+
+  LogRetentionDays:
+    Type: Number
+    Default: 7
+    Description: CloudWatch log retention in days
+
+  CostAlertThreshold:
+    Type: Number
+    Default: 5
+    Description: Daily cost alert threshold in USD
+
+  TemplatesBucketName:
+    Type: String
+    Description: S3 bucket name containing nested stack templates (leave empty if using local templates)
+    Default: ''
+
+Conditions:
+  UseS3Templates: !Not [!Equals [!Ref TemplatesBucketName, '']]
+
+Resources:
+  # 1. VPC Stack
+  VPCStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !If
+        - UseS3Templates
+        - !Sub 'https://${TemplatesBucketName}.s3.${AWS::Region}.amazonaws.com/vpc.yaml'
+        - 'file://./templates/vpc.yaml'
+      Parameters:
+        ProjectName: !Ref ProjectName
+        Environment: !Ref Environment
+        VpcCIDR: !Ref VpcCIDR
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-${Environment}-vpc-stack'
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+
+  # 2. EKS Stack (depends on VPC)
+  EKSStack:
+    Type: AWS::CloudFormation::Stack
+    DependsOn: VPCStack
+    Properties:
+      TemplateURL: !If
+        - UseS3Templates
+        - !Sub 'https://${TemplatesBucketName}.s3.${AWS::Region}.amazonaws.com/eks.yaml'
+        - 'file://./templates/eks.yaml'
+      Parameters:
+        ProjectName: !Ref ProjectName
+        Environment: !Ref Environment
+        VpcStackName: !GetAtt VPCStack.Outputs.StackName
+        ClusterVersion: !Ref ClusterVersion
+        NodeInstanceType: !Ref NodeInstanceType
+        NodeGroupMinSize: !Ref NodeGroupMinSize
+        NodeGroupMaxSize: !Ref NodeGroupMaxSize
+        NodeGroupDesiredSize: !Ref NodeGroupDesiredSize
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-${Environment}-eks-stack'
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+
+  # 3. ECR Stack (parallel with EKS)
+  ECRStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !If
+        - UseS3Templates
+        - !Sub 'https://${TemplatesBucketName}.s3.${AWS::Region}.amazonaws.com/ecr.yaml'
+        - 'file://./templates/ecr.yaml'
+      Parameters:
+        ProjectName: !Ref ProjectName
+        Environment: !Ref Environment
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-${Environment}-ecr-stack'
+
+  # 4. S3 Stack (parallel with EKS)
+  S3Stack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !If
+        - UseS3Templates
+        - !Sub 'https://${TemplatesBucketName}.s3.${AWS::Region}.amazonaws.com/s3.yaml'
+        - 'file://./templates/s3.yaml'
+      Parameters:
+        ProjectName: !Ref ProjectName
+        Environment: !Ref Environment
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-${Environment}-s3-stack'
+
+  # 5. CloudWatch Stack (depends on EKS)
+  CloudWatchStack:
+    Type: AWS::CloudFormation::Stack
+    DependsOn: EKSStack
+    Properties:
+      TemplateURL: !If
+        - UseS3Templates
+        - !Sub 'https://${TemplatesBucketName}.s3.${AWS::Region}.amazonaws.com/cloudwatch.yaml'
+        - 'file://./templates/cloudwatch.yaml'
+      Parameters:
+        ProjectName: !Ref ProjectName
+        Environment: !Ref Environment
+        EKSStackName: !GetAtt EKSStack.Outputs.StackName
+        LogRetentionDays: !Ref LogRetentionDays
+        CostAlertThreshold: !Ref CostAlertThreshold
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-${Environment}-cloudwatch-stack'
+
+Outputs:
+  # VPC Outputs
+  VpcId:
+    Description: VPC ID
+    Value: !GetAtt VPCStack.Outputs.VpcId
+
+  PrivateSubnetIds:
+    Description: Private Subnet IDs
+    Value: !GetAtt VPCStack.Outputs.PrivateSubnetIds
+
+  PublicSubnetIds:
+    Description: Public Subnet IDs
+    Value: !GetAtt VPCStack.Outputs.PublicSubnetIds
+
+  # EKS Outputs
+  ClusterName:
+    Description: EKS Cluster Name
+    Value: !GetAtt EKSStack.Outputs.ClusterName
+
+  ClusterEndpoint:
+    Description: EKS Cluster Endpoint
+    Value: !GetAtt EKSStack.Outputs.ClusterEndpoint
+
+  ConfigureKubectl:
+    Description: Command to configure kubectl
+    Value: !GetAtt EKSStack.Outputs.ConfigureKubectl
+
+  # ECR Outputs
+  ECRRepositoryUri:
+    Description: ECR Repository URI for API
+    Value: !GetAtt ECRStack.Outputs.APIRepositoryUri
+
+  # S3 Outputs
+  S3BucketName:
+    Description: S3 Bucket Name
+    Value: !GetAtt S3Stack.Outputs.BucketName
+
+  # CloudWatch Outputs
+  DashboardUrl:
+    Description: CloudWatch Dashboard URL
+    Value: !GetAtt CloudWatchStack.Outputs.DashboardUrl
+
+  # Quick Start Guide
+  QuickStartCommands:
+    Description: Quick start commands
+    Value: !Sub |
+      # 1. Configure kubectl
+      ${EKSStack.Outputs.ConfigureKubectl}
+
+      # 2. Verify cluster
+      kubectl get nodes
+
+      # 3. Install ALB Controller
+      cd deploy/kubernetes/scripts
+      ./install-alb-controller.sh
+
+      # 4. Build and push Docker image
+      aws ecr get-login-password --region ${AWS::Region} | docker login --username AWS --password-stdin ${ECRStack.Outputs.APIRepositoryUri}
+      docker build -t ${ECRStack.Outputs.APIRepositoryUri}:latest -f deploy/docker/api/Dockerfile .
+      docker push ${ECRStack.Outputs.APIRepositoryUri}:latest
+
+      # 5. Deploy application
+      cd deploy/kubernetes/scripts
+      ./deploy.sh
+
+      # 6. Get ALB URL
+      kubectl get ingress -n prod

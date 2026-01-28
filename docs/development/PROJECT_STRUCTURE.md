@@ -170,18 +170,30 @@ scripts/
 └── test_upload.sh              # 测试上传
 ```
 
-### 7. Docker（容器配置）
+### 7. 部署配置（Deployment）
 
 ```
-docker/
-└── docker-compose.langfuse.yml  # Langfuse Docker Compose
+deploy/
+├── docker/                      # Docker 镜像构建
+│   └── api/
+│       ├── Dockerfile           # API 服务镜像
+│       └── .dockerignore        # Docker 构建忽略文件
+├── kubernetes/                  # Kubernetes 配置
+│   ├── base/                    # 基础配置
+│   │   ├── kustomization.yaml
+│   │   ├── deployment.yaml
+│   │   └── service.yaml
+│   └── overlays/                # 环境特定配置
+│       ├── dev/                 # 开发环境
+│       ├── staging/             # 预发布环境
+│       └── production/          # 生产环境
+└── terraform/                   # AWS 基础设施即代码
+    ├── main.tf                  # EKS 集群配置
+    ├── variables.tf             # 变量定义
+    └── outputs.tf               # 输出配置
 ```
 
-⚠️ **根目录还有：**
-```
-├── docker-compose.langfuse.yml  # ⚠️ 重复，应移除或合并
-└── docker-compose.phoenix.yml   # Phoenix Docker Compose
-```
+📌 **注意**：项目已迁移到 Kubernetes 部署，不再使用 Docker Compose。
 
 ### 8. Tools（开发工具）
 
@@ -251,37 +263,24 @@ data/                  # ✅ 正确的数据目录
 
 ### 2. ⚠️ 敏感信息问题
 
-**问题：**
-`docker-compose.langfuse.yml` 包含硬编码的密码：
-- DATABASE_URL 包含明文密码
-- NEXTAUTH_SECRET 硬编码
-- SALT 硬编码
+**注意：**
+Kubernetes 部署中的敏感信息管理：
+- 使用 Kubernetes Secrets 存储敏感数据
+- 不要在配置文件中硬编码密码
+- 使用 AWS Secrets Manager 或参数存储
 
-**影响：**
-- Git hooks 阻止提交
-- 安全风险
-
-**建议：**
+**最佳实践：**
 ```yaml
-# 使用环境变量
-environment:
-  - DATABASE_URL=${LANGFUSE_DATABASE_URL}
-  - NEXTAUTH_SECRET=${LANGFUSE_NEXTAUTH_SECRET}
-  - SALT=${LANGFUSE_SALT}
+# Kubernetes Secret 示例
+apiVersion: v1
+kind: Secret
+metadata:
+  name: app-secrets
+type: Opaque
+data:
+  database-url: <base64-encoded>
+  api-key: <base64-encoded>
 ```
-
-### 3. ⚠️ Docker Compose 文件重复
-
-**问题：**
-```
-docker-compose.langfuse.yml        # 根目录
-docker/docker-compose.langfuse.yml # docker 目录
-```
-
-**建议：**
-- 统一放在 `docker/` 目录
-- 删除根目录的文件
-- 或者只保留根目录，删除 `docker/` 目录
 
 ### 4. 📝 测试数据管理
 
@@ -537,20 +536,22 @@ tqdm>=4.65.0
 - Git hooks（敏感信息检测）
 
 ⚠️ **待改进：**
-- Docker Compose 密码硬编码
+- Kubernetes Secrets 管理
 - API 认证/授权
 - 速率限制
 - 输入验证
 
 ### 安全检查清单
 
-- [ ] 移除 Docker Compose 中的硬编码密码
+- [x] 移除 Docker Compose（已迁移到 Kubernetes）
+- [ ] 配置 Kubernetes Secrets
 - [ ] 创建 `.env.example`
 - [ ] 添加 API 认证
 - [ ] 实现速率限制
 - [ ] 添加输入验证和清理
 - [ ] 配置 CORS 白名单
 - [ ] 启用 HTTPS（生产环境）
+- [ ] 配置 AWS IAM 角色和策略
 
 ## 📝 维护建议
 
@@ -604,21 +605,23 @@ mypy backend/
 ### 常用命令
 
 ```bash
-# 启动服务
+# 本地开发 - 直接运行
 cd backend && python server.py
+
+# 本地开发 - Kubernetes
+kubectl apply -k deploy/kubernetes/overlays/dev
+
+# 生产部署 - AWS EKS
+kubectl apply -k deploy/kubernetes/overlays/production
 
 # 运行测试
 pytest
 ./run_tests.sh
 
-# 启动 Neo4j
-docker run -d --name neo4j \
-  -p 7474:7474 -p 7687:7687 \
-  -e NEO4J_AUTH=neo4j/password \
-  neo4j:latest
-
-# 启动 Langfuse
-docker-compose -f docker/docker-compose.langfuse.yml up -d
+# 查看 Kubernetes 资源
+kubectl get pods
+kubectl get services
+kubectl logs -f <pod-name>
 
 # 数据迁移
 ./scripts/migrate_data_structure.sh

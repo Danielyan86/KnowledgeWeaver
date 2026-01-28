@@ -1,0 +1,223 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'EKS Cluster with managed node group for KnowledgeWeaver'
+
+Parameters:
+  ProjectName:
+    Type: String
+    Default: knowledgeweaver
+
+  Environment:
+    Type: String
+    Default: production
+
+  VpcStackName:
+    Type: String
+    Description: Name of the VPC stack to import values from
+
+  ClusterVersion:
+    Type: String
+    Default: '1.28'
+    Description: Kubernetes version
+
+  NodeInstanceType:
+    Type: String
+    Default: t3.medium
+    Description: EC2 instance type for worker nodes
+
+  NodeGroupMinSize:
+    Type: Number
+    Default: 0
+    Description: Minimum number of worker nodes (0 for cost savings)
+
+  NodeGroupMaxSize:
+    Type: Number
+    Default: 5
+    Description: Maximum number of worker nodes
+
+  NodeGroupDesiredSize:
+    Type: Number
+    Default: 2
+    Description: Desired number of worker nodes
+
+Resources:
+  # EKS Cluster IAM Role
+  EKSClusterRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${ProjectName}-${Environment}-eks-cluster-role'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: eks.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonEKSClusterPolicy
+        - arn:aws:iam::aws:policy/AmazonEKSVPCResourceController
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-${Environment}-eks-cluster-role'
+
+  # EKS Cluster Security Group
+  EKSClusterSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Sub '${ProjectName}-${Environment}-eks-cluster-sg'
+      GroupDescription: Security group for EKS cluster
+      VpcId:
+        Fn::ImportValue: !Sub '${VpcStackName}-VpcId'
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-${Environment}-eks-cluster-sg'
+
+  # EKS Cluster
+  EKSCluster:
+    Type: AWS::EKS::Cluster
+    Properties:
+      Name: !Sub '${ProjectName}-${Environment}'
+      Version: !Ref ClusterVersion
+      RoleArn: !GetAtt EKSClusterRole.Arn
+      ResourcesVpcConfig:
+        SecurityGroupIds:
+          - !Ref EKSClusterSecurityGroup
+        SubnetIds:
+          - Fn::ImportValue: !Sub '${VpcStackName}-PublicSubnet1'
+          - Fn::ImportValue: !Sub '${VpcStackName}-PublicSubnet2'
+          - Fn::ImportValue: !Sub '${VpcStackName}-PrivateSubnet1'
+          - Fn::ImportValue: !Sub '${VpcStackName}-PrivateSubnet2'
+        EndpointPublicAccess: true
+        EndpointPrivateAccess: true
+      Logging:
+        ClusterLogging:
+          EnabledTypes:
+            - Type: api
+            - Type: audit
+            - Type: authenticator
+            - Type: controllerManager
+            - Type: scheduler
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-${Environment}-eks-cluster'
+
+  # Node Group IAM Role
+  NodeGroupRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${ProjectName}-${Environment}-eks-node-role'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy
+        - arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy
+        - arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly
+        - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+        - arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-${Environment}-eks-node-role'
+
+  # EKS Node Group
+  NodeGroup:
+    Type: AWS::EKS::Nodegroup
+    DependsOn: EKSCluster
+    Properties:
+      ClusterName: !Ref EKSCluster
+      NodegroupName: main-nodes
+      NodeRole: !GetAtt NodeGroupRole.Arn
+      Subnets:
+        - Fn::ImportValue: !Sub '${VpcStackName}-PrivateSubnet1'
+        - Fn::ImportValue: !Sub '${VpcStackName}-PrivateSubnet2'
+      InstanceTypes:
+        - !Ref NodeInstanceType
+      DiskSize: 50
+      ScalingConfig:
+        MinSize: !Ref NodeGroupMinSize
+        MaxSize: !Ref NodeGroupMaxSize
+        DesiredSize: !Ref NodeGroupDesiredSize
+      UpdateConfig:
+        MaxUnavailable: 1
+      Labels:
+        role: general
+        environment: !Ref Environment
+      Tags:
+        Name: !Sub '${ProjectName}-${Environment}-node-group'
+        Project: !Ref ProjectName
+        Environment: !Ref Environment
+
+  # Note: EBS CSI Driver requires IRSA (IAM Roles for Service Accounts)
+  # For now, we'll install it without ServiceAccountRole and configure IRSA later
+  # The addon will use the node IAM role permissions
+
+  # EBS CSI Driver Addon
+  EBSCSIDriverAddon:
+    Type: AWS::EKS::Addon
+    DependsOn: NodeGroup
+    Properties:
+      ClusterName: !Ref EKSCluster
+      AddonName: aws-ebs-csi-driver
+      # ServiceAccountRoleArn will be added after OIDC Provider setup
+
+  # VPC CNI Addon
+  VPCCNIAddon:
+    Type: AWS::EKS::Addon
+    DependsOn: NodeGroup
+    Properties:
+      ClusterName: !Ref EKSCluster
+      AddonName: vpc-cni
+
+  # CoreDNS Addon
+  CoreDNSAddon:
+    Type: AWS::EKS::Addon
+    DependsOn: NodeGroup
+    Properties:
+      ClusterName: !Ref EKSCluster
+      AddonName: coredns
+
+  # kube-proxy Addon
+  KubeProxyAddon:
+    Type: AWS::EKS::Addon
+    DependsOn: NodeGroup
+    Properties:
+      ClusterName: !Ref EKSCluster
+      AddonName: kube-proxy
+
+Outputs:
+  ClusterName:
+    Description: EKS Cluster Name
+    Value: !Ref EKSCluster
+    Export:
+      Name: !Sub '${AWS::StackName}-ClusterName'
+
+  ClusterEndpoint:
+    Description: EKS Cluster Endpoint
+    Value: !GetAtt EKSCluster.Endpoint
+    Export:
+      Name: !Sub '${AWS::StackName}-ClusterEndpoint'
+
+  ClusterSecurityGroupId:
+    Description: EKS Cluster Security Group ID
+    Value: !Ref EKSClusterSecurityGroup
+    Export:
+      Name: !Sub '${AWS::StackName}-SecurityGroupId'
+
+  NodeGroupRole:
+    Description: Node Group IAM Role ARN
+    Value: !GetAtt NodeGroupRole.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-NodeGroupRole'
+
+  OIDCProviderUrl:
+    Description: OIDC Provider URL for IRSA
+    Value: !GetAtt EKSCluster.OpenIdConnectIssuerUrl
+    Export:
+      Name: !Sub '${AWS::StackName}-OIDCProviderUrl'
+
+  ConfigureKubectl:
+    Description: Command to configure kubectl
+    Value: !Sub 'aws eks update-kubeconfig --region ${AWS::Region} --name ${EKSCluster}'

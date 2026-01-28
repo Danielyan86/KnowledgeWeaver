@@ -1,0 +1,125 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'CloudWatch logs, alarms, and dashboard for KnowledgeWeaver'
+
+Parameters:
+  ProjectName:
+    Type: String
+    Default: knowledgeweaver
+
+  Environment:
+    Type: String
+    Default: production
+
+  EKSStackName:
+    Type: String
+    Description: Name of the EKS stack to import cluster name
+
+  LogRetentionDays:
+    Type: Number
+    Default: 7
+    Description: CloudWatch log retention in days
+
+  CostAlertThreshold:
+    Type: Number
+    Default: 5
+    Description: Daily cost alert threshold in USD
+
+Resources:
+  # CloudWatch Log Group for EKS Cluster
+  EKSClusterLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub
+        - '/aws/eks/${ClusterName}/cluster'
+        - ClusterName:
+            Fn::ImportValue: !Sub '${EKSStackName}-ClusterName'
+      RetentionInDays: !Ref LogRetentionDays
+
+  # CloudWatch Log Group for Application
+  ApplicationLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub
+        - '/aws/eks/${ClusterName}/application'
+        - ClusterName:
+            Fn::ImportValue: !Sub '${EKSStackName}-ClusterName'
+      RetentionInDays: !Ref LogRetentionDays
+
+  # SNS Topic for Alarms
+  AlarmTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub '${ProjectName}-${Environment}-alarms'
+      DisplayName: KnowledgeWeaver Alarms
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-${Environment}-alarms'
+
+  # Cost Alarm
+  HighCostAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub '${ProjectName}-${Environment}-high-cost'
+      AlarmDescription: Alert when daily AWS cost exceeds threshold
+      MetricName: EstimatedCharges
+      Namespace: AWS/Billing
+      Statistic: Maximum
+      Period: 86400  # 1 day
+      EvaluationPeriods: 1
+      Threshold: !Ref CostAlertThreshold
+      ComparisonOperator: GreaterThanThreshold
+      AlarmActions:
+        - !Ref AlarmTopic
+      Dimensions:
+        - Name: Currency
+          Value: USD
+
+  # CloudWatch Dashboard
+  Dashboard:
+    Type: AWS::CloudWatch::Dashboard
+    Properties:
+      DashboardName: !Sub '${ProjectName}-${Environment}'
+      DashboardBody: !Sub |
+        {
+          "widgets": [
+            {
+              "type": "metric",
+              "properties": {
+                "metrics": [
+                  ["AWS/EKS", "cluster_failed_node_count"]
+                ],
+                "period": 300,
+                "stat": "Average",
+                "region": "${AWS::Region}",
+                "title": "EKS Failed Nodes"
+              }
+            },
+            {
+              "type": "log",
+              "properties": {
+                "query": "SOURCE '${ApplicationLogGroup}' | fields @timestamp, @message | sort @timestamp desc | limit 100",
+                "region": "${AWS::Region}",
+                "title": "Recent Application Logs"
+              }
+            }
+          ]
+        }
+
+Outputs:
+  EKSClusterLogGroupName:
+    Description: EKS Cluster Log Group Name
+    Value: !Ref EKSClusterLogGroup
+
+  ApplicationLogGroupName:
+    Description: Application Log Group Name
+    Value: !Ref ApplicationLogGroup
+
+  AlarmTopicArn:
+    Description: SNS Topic ARN for alarms
+    Value: !Ref AlarmTopic
+    Export:
+      Name: !Sub '${AWS::StackName}-AlarmTopicArn'
+
+  DashboardUrl:
+    Description: CloudWatch Dashboard URL
+    Value: !Sub 'https://console.aws.amazon.com/cloudwatch/home?region=${AWS::Region}#dashboards:name=${Dashboard}'

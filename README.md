@@ -19,7 +19,7 @@ KnowledgeWeaver is an intelligent question-answering system that combines Knowle
 
 ## System Architecture
 
-![Architecture Diagram](docs/architecture-en.png)
+![Architecture Diagram](docs/architecture/architecture-en.png)
 
 ### Processing Pipeline
 
@@ -114,10 +114,13 @@ KnowledgeWeaver/
 │   ├── inputs/          # User uploaded files
 │   └── cache/           # Cache data
 ├── docs/                # Documentation
-│   ├── architecture-cn.png      # Architecture diagram (CN)
-│   ├── architecture-en.png      # Architecture diagram (EN)
-│   ├── architecture-diagram-cn.html  # Interactive diagram (CN)
-│   └── architecture-diagram-en.html  # Interactive diagram (EN)
+│   ├── architecture/    # Architecture diagrams and design documents
+│   ├── deployment/      # AWS and deployment guides
+│   ├── database/        # Database setup and optimization guides
+│   ├── observability/   # Monitoring and observability documentation
+│   ├── development/     # Development and testing guides
+│   ├── security/        # Security best practices and guidelines
+│   └── README.md        # Documentation index
 ├── logs/                # Log files (gitignored)
 └── tests/               # Test cases
 ```

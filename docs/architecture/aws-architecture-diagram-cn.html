@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KnowledgeWeaver AWS 架构</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 40px;
+            background: linear-gradient(135deg, #FF9A56 0%, #FF6A88 100%);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif, 'Microsoft YaHei', '微软雅黑';
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        #diagram {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            padding: 40px;
+        }
+
+        .node {
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .node:hover {
+            transform: translateY(-2px);
+        }
+
+        .node rect, .node ellipse, .node polygon {
+            filter: drop-shadow(0 4px 6px rgba(0,0,0,0.1));
+        }
+
+        .node text {
+            pointer-events: none;
+            font-weight: 600;
+        }
+
+        .link {
+            fill: none;
+            stroke-width: 2.5;
+            opacity: 0.7;
+        }
+
+        .link.solid {
+            stroke: #FF6A88;
+        }
+
+        .link.dashed {
+            stroke: #FF9A56;
+            stroke-dasharray: 8, 4;
+        }
+
+        .group-box {
+            fill: none;
+            stroke-width: 2;
+            rx: 15;
+            opacity: 0.8;
+        }
+
+        .group-box.vpc {
+            stroke: #232F3E;
+            stroke-dasharray: 10, 5;
+        }
+
+        .group-box.subnet {
+            stroke: #4A90E2;
+            stroke-dasharray: 5, 3;
+        }
+
+        .group-box.services {
+            stroke: #E07B39;
+            stroke-dasharray: 10, 5;
+        }
+
+        .group-label {
+            font-size: 14px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .group-label.vpc {
+            fill: #232F3E;
+        }
+
+        .group-label.subnet {
+            fill: #4A90E2;
+        }
+
+        .group-label.services {
+            fill: #E07B39;
+        }
+
+        .title {
+            font-size: 32px;
+            font-weight: 700;
+            fill: #333;
+            text-anchor: middle;
+        }
+
+        .subtitle {
+            font-size: 16px;
+            fill: #666;
+            text-anchor: middle;
+        }
+
+        .arrow {
+            fill: #FF6A88;
+        }
+
+        .arrow.dashed {
+            fill: #FF9A56;
+        }
+
+        .aws-icon {
+            font-size: 12px;
+            fill: #FF9900;
+            font-weight: 700;
+        }
+    </style>
+</head>
+<body>
+    <div id="diagram"></div>
+
+    <script>
+        const width = 1400;
+        const height = 850;
+
+        const svg = d3.select('#diagram')
+            .append('svg')
+            .attr('width', width)
+            .attr('height', height);
+
+        // Define arrow markers
+        svg.append('defs').selectAll('marker')
+            .data(['arrow', 'arrow-dashed'])
+            .enter().append('marker')
+            .attr('id', d => d)
+            .attr('viewBox', '0 0 10 10')
+            .attr('refX', 9)
+            .attr('refY', 5)
+            .attr('markerWidth', 6)
+            .attr('markerHeight', 6)
+            .attr('orient', 'auto')
+            .append('path')
+            .attr('d', 'M 0 0 L 10 5 L 0 10 z')
+            .attr('class', d => d === 'arrow-dashed' ? 'arrow dashed' : 'arrow');
+
+        // Title
+        svg.append('text')
+            .attr('class', 'title')
+            .attr('x', width / 2)
+            .attr('y', 40)
+            .text('KnowledgeWeaver AWS 云架构');
+
+        svg.append('text')
+            .attr('class', 'subtitle')
+            .attr('x', width / 2)
+            .attr('y', 65)
+            .text('单可用区生产环境部署');
+
+        // Define colors (AWS-inspired)
+        const colors = {
+            // Networking
+            vpc: '#232F3E',
+            subnet: '#4A90E2',
+            alb: '#8C4FFF',
+            nat: '#527FFF',
+            igw: '#2E7D32',
+
+            // Compute
+            ecs: '#FF9900',
+            ec2: '#FF6F00',
+
+            // Storage
+            s3: '#569A31',
+            rds: '#527FFF',
+
+            // Management
+            cloudwatch: '#FF4F8B',
+            secrets: '#DD344C',
+
+            // Application
+            api: '#FF6A88',
+            neo4j: '#008CC1',
+
+            // External
+            internet: '#4CAF50',
+            user: '#2196F3'
+        };
+
+        // Group definitions
+        const groups = [
+            // AWS Cloud
+            {id: 'aws', x: 30, y: 100, width: 1340, height: 700, label: 'AWS 云', class: 'vpc'},
+
+            // VPC
+            {id: 'vpc', x: 50, y: 140, width: 900, height: 620, label: 'VPC (10.0.0.0/16)', class: 'vpc'},
+
+            // Public Subnet
+            {id: 'public', x: 70, y: 190, width: 350, height: 280, label: '公共子网 (10.0.1.0/24)', class: 'subnet'},
+
+            // Private Subnet
+            {id: 'private', x: 70, y: 500, width: 350, height: 230, label: '私有子网 (10.0.2.0/24)', class: 'subnet'},
+
+            // AWS Managed Services
+            {id: 'services', x: 980, y: 140, width: 370, height: 620, label: 'AWS 托管服务', class: 'services'}
+        ];
+
+        // Draw groups
+        svg.selectAll('.group-box')
+            .data(groups)
+            .enter().append('rect')
+            .attr('class', d => `group-box ${d.class}`)
+            .attr('x', d => d.x)
+            .attr('y', d => d.y)
+            .attr('width', d => d.width)
+            .attr('height', d => d.height);
+
+        svg.selectAll('.group-label')
+            .data(groups)
+            .enter().append('text')
+            .attr('class', d => `group-label ${d.class}`)
+            .attr('x', d => d.x + 10)
+            .attr('y', d => d.y - 8)
+            .text(d => d.label);
+
+        // Node definitions
+        const nodes = [
+            // Internet
+            {id: 'internet', x: 120, y: 750, width: 140, height: 60, label: '互联网\n用户', color: colors.user, shape: 'hexagon'},
+            {id: 'igw', x: 150, y: 110, width: 80, height: 50, label: '互联网\n网关', color: colors.igw},
+
+            // Public Subnet Components
+            {id: 'alb', x: 180, y: 250, width: 140, height: 60, label: '应用负载\n均衡器', color: colors.alb},
+            {id: 'nat', x: 200, y: 370, width: 100, height: 60, label: 'NAT\n网关', color: colors.nat},
+
+            // Private Subnet Components
+            {id: 'ecs', x: 150, y: 550, width: 200, height: 70, label: 'ECS Fargate\nFastAPI 容器\n(自动扩展)', color: colors.ecs},
+            {id: 'neo4j', x: 500, y: 300, width: 140, height: 80, label: 'Neo4j EC2\nt3.medium', color: colors.neo4j, shape: 'cylinder'},
+
+            // AWS Managed Services
+            {id: 's3', x: 1010, y: 200, width: 150, height: 60, label: 'S3 存储桶\n(文档存储)', color: colors.s3, shape: 'cylinder'},
+            {id: 'ecr', x: 1010, y: 280, width: 150, height: 60, label: 'ECR\n(镜像仓库)', color: colors.ecs, shape: 'cylinder'},
+            {id: 'rds', x: 1010, y: 360, width: 150, height: 60, label: 'RDS PostgreSQL\n(Phoenix/Langfuse)', color: colors.rds, shape: 'cylinder'},
+            {id: 'cloudwatch', x: 1010, y: 480, width: 150, height: 60, label: 'CloudWatch\n日志和指标', color: colors.cloudwatch},
+            {id: 'secrets', x: 1190, y: 480, width: 140, height: 60, label: 'Secrets\nManager', color: colors.secrets},
+            {id: 'sns', x: 1010, y: 560, width: 150, height: 60, label: 'SNS\n(告警通知)', color: colors.cloudwatch},
+            {id: 'cloudtrail', x: 1190, y: 560, width: 140, height: 60, label: 'CloudTrail\n(审计日志)', color: colors.secrets}
+        ];
+
+        // Draw nodes
+        const nodeGroup = svg.selectAll('.node')
+            .data(nodes)
+            .enter().append('g')
+            .attr('class', 'node')
+            .attr('transform', d => `translate(${d.x}, ${d.y})`);
+
+        nodeGroup.each(function(d) {
+            const node = d3.select(this);
+
+            if (d.shape === 'cylinder') {
+                // Cylinder shape (databases)
+                const rx = d.width / 2;
+                const ry = 8;
+
+                node.append('ellipse')
+                    .attr('cx', d.width / 2)
+                    .attr('cy', ry)
+                    .attr('rx', rx)
+                    .attr('ry', ry)
+                    .attr('fill', d.color)
+                    .attr('stroke', d3.rgb(d.color).darker(0.5))
+                    .attr('stroke-width', 2);
+
+                node.append('rect')
+                    .attr('x', 0)
+                    .attr('y', ry)
+                    .attr('width', d.width)
+                    .attr('height', d.height - ry)
+                    .attr('fill', d.color)
+                    .attr('stroke', d3.rgb(d.color).darker(0.5))
+                    .attr('stroke-width', 2);
+
+                node.append('ellipse')
+                    .attr('cx', d.width / 2)
+                    .attr('cy', d.height)
+                    .attr('rx', rx)
+                    .attr('ry', ry)
+                    .attr('fill', d.color)
+                    .attr('stroke', d3.rgb(d.color).darker(0.5))
+                    .attr('stroke-width', 2);
+
+            } else if (d.shape === 'hexagon') {
+                // Hexagon shape (external services)
+                const points = [
+                    [20, 0],
+                    [d.width - 20, 0],
+                    [d.width, d.height / 2],
+                    [d.width - 20, d.height],
+                    [20, d.height],
+                    [0, d.height / 2]
+                ];
+
+                node.append('polygon')
+                    .attr('points', points.map(p => p.join(',')).join(' '))
+                    .attr('fill', d.color)
+                    .attr('stroke', d3.rgb(d.color).darker(0.5))
+                    .attr('stroke-width', 2);
+
+            } else {
+                // Rectangle (default)
+                node.append('rect')
+                    .attr('width', d.width)
+                    .attr('height', d.height)
+                    .attr('rx', 8)
+                    .attr('fill', d.color)
+                    .attr('stroke', d3.rgb(d.color).darker(0.5))
+                    .attr('stroke-width', 2);
+            }
+
+            // Add text
+            const lines = d.label.split('\n');
+            const textGroup = node.append('text')
+                .attr('x', d.width / 2)
+                .attr('y', d.height / 2)
+                .attr('text-anchor', 'middle')
+                .attr('dominant-baseline', 'central')
+                .attr('fill', 'white')
+                .attr('font-size', '11px');
+
+            const lineHeight = 13;
+            const startY = -(lines.length - 1) * lineHeight / 2;
+            lines.forEach((line, i) => {
+                textGroup.append('tspan')
+                    .attr('x', d.width / 2)
+                    .attr('dy', i === 0 ? startY : lineHeight)
+                    .text(line);
+            });
+        });
+
+        // Links
+        const links = [
+            // Internet flow
+            {from: 'internet', to: 'igw', type: 'solid'},
+            {from: 'igw', to: 'alb', type: 'solid'},
+
+            // ALB to ECS
+            {from: 'alb', to: 'ecs', type: 'solid'},
+
+            // ECS to Neo4j
+            {from: 'ecs', to: 'neo4j', type: 'solid'},
+
+            // NAT Gateway for outbound
+            {from: 'ecs', to: 'nat', type: 'dashed'},
+            {from: 'nat', to: 'igw', type: 'dashed'},
+
+            // ECS to AWS Services
+            {from: 'ecs', to: 's3', type: 'solid'},
+            {from: 'ecs', to: 'rds', type: 'solid'},
+            {from: 'ecs', to: 'secrets', type: 'dashed'},
+
+            // Monitoring
+            {from: 'ecs', to: 'cloudwatch', type: 'dashed'},
+            {from: 'neo4j', to: 'cloudwatch', type: 'dashed'},
+            {from: 'cloudwatch', to: 'sns', type: 'solid'},
+
+            // ECR to ECS
+            {from: 'ecr', to: 'ecs', type: 'dashed'},
+
+            // Audit
+            {from: 'alb', to: 'cloudtrail', type: 'dashed'}
+        ];
+
+        // Draw links
+        const linkGroup = svg.insert('g', '.node')
+            .attr('class', 'links');
+
+        links.forEach(link => {
+            const source = nodes.find(n => n.id === link.from);
+            const target = nodes.find(n => n.id === link.to);
+
+            if (!source || !target) return;
+
+            const x1 = source.x + source.width / 2;
+            const y1 = source.y + source.height / 2;
+            const x2 = target.x + target.width / 2;
+            const y2 = target.y + target.height / 2;
+
+            // Calculate path with bezier curves
+            const path = d3.path();
+            path.moveTo(x1, y1);
+
+            const dx = x2 - x1;
+            const dy = y2 - y1;
+
+            if (Math.abs(dx) > Math.abs(dy)) {
+                // Horizontal curve
+                const cx = x1 + dx / 2;
+                path.quadraticCurveTo(cx, y1, cx, (y1 + y2) / 2);
+                path.quadraticCurveTo(cx, y2, x2, y2);
+            } else {
+                // Vertical curve
+                const cy = y1 + dy / 2;
+                path.quadraticCurveTo(x1, cy, (x1 + x2) / 2, cy);
+                path.quadraticCurveTo(x2, cy, x2, y2);
+            }
+
+            linkGroup.append('path')
+                .attr('class', `link ${link.type}`)
+                .attr('d', path.toString())
+                .attr('marker-end', `url(#arrow${link.type === 'dashed' ? '-dashed' : ''})`);
+        });
+
+        // Add AWS logo text
+        svg.append('text')
+            .attr('class', 'aws-icon')
+            .attr('x', 1300)
+            .attr('y', 790)
+            .attr('text-anchor', 'end')
+            .text('Powered by AWS');
+    </script>
+</body>
+</html>

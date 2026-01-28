@@ -99,22 +99,25 @@ curl -X POST http://localhost:9621/qa \
 
 ### ✅ 已完成的部分
 
-- ✅ Docker Compose 配置已创建
-- ✅ Langfuse 服务已启动（v2版本，简化配置）
-- ✅ PostgreSQL 数据库运行正常
+- ✅ Kubernetes 配置已创建
+- ✅ Langfuse 服务已集成到 K8s 部署
+- ✅ PostgreSQL 数据库配置完成
 - ✅ 集成代码已添加（OpenAI Wrapper 方式，仅1行代码）
 - ✅ 测试脚本已创建
 
 ### 完成剩余配置（5 分钟）
 
-#### 步骤 1: 启动 Langfuse 服务（1 分钟）
+#### 步骤 1: 部署 Langfuse 服务（1 分钟）
 
 ```bash
-# 使用项目提供的配置文件启动
-docker compose -f docker-compose.langfuse.yml up -d
+# 部署到 Kubernetes
+kubectl apply -k deploy/kubernetes/overlays/dev
 
 # 查看服务状态
-docker ps | grep langfuse
+kubectl get pods -n knowledgeweaver | grep langfuse
+
+# 端口转发以访问 UI
+kubectl port-forward svc/langfuse 3000:3000 -n knowledgeweaver
 ```
 
 #### 步骤 2: 访问 Langfuse UI（1 分钟）
@@ -542,40 +545,46 @@ tracer.client.score(
 
 ### 查看服务状态
 ```bash
-docker ps | grep langfuse
+kubectl get pods -n knowledgeweaver
+kubectl get svc -n knowledgeweaver
 ```
 
 ### 查看日志
 ```bash
 # Langfuse 服务日志
-docker logs -f langfuse-server
+kubectl logs -f -n knowledgeweaver -l app=langfuse
 
 # 数据库日志
-docker logs -f langfuse-db
+kubectl logs -f -n knowledgeweaver -l app=postgres
 ```
 
 ### 停止服务
 ```bash
-docker compose -f docker-compose.langfuse.yml down
+kubectl delete -k deploy/kubernetes/overlays/dev
 ```
 
 ### 启动服务
 ```bash
-docker compose -f docker-compose.langfuse.yml up -d
+kubectl apply -k deploy/kubernetes/overlays/dev
 ```
 
 ### 完全清理（包括数据）
 ```bash
-docker compose -f docker-compose.langfuse.yml down -v
+# 删除所有资源包括 PVC
+kubectl delete -k deploy/kubernetes/overlays/dev
+kubectl delete pvc -l app=langfuse -n knowledgeweaver
 ```
 
 ### 数据备份
 ```bash
+# 获取 PostgreSQL Pod 名称
+POSTGRES_POD=$(kubectl get pods -n knowledgeweaver -l app=postgres -o jsonpath='{.items[0].metadata.name}')
+
 # 备份 PostgreSQL
-docker exec langfuse-db pg_dump -U postgres langfuse > backup.sql
+kubectl exec -n knowledgeweaver $POSTGRES_POD -- pg_dump -U postgres langfuse > backup.sql
 
 # 恢复
-docker exec -i langfuse-db psql -U postgres langfuse < backup.sql
+kubectl exec -i -n knowledgeweaver $POSTGRES_POD -- psql -U postgres langfuse < backup.sql
 ```
 
 ---
@@ -598,22 +607,26 @@ python test_langfuse_connection.py
 python -m backend.server
 ```
 
-### 问题 2: Docker 容器启动失败
+### 问题 2: Kubernetes Pod 启动失败
 
 **检查**:
 ```bash
-docker logs langfuse-server
-docker logs langfuse-db
+# 查看 Pod 状态
+kubectl get pods -n knowledgeweaver
+
+# 查看 Pod 日志
+kubectl logs -n knowledgeweaver -l app=langfuse
+kubectl logs -n knowledgeweaver -l app=postgres
 ```
 
 **解决**:
 ```bash
-# 重启服务
-docker compose -f docker-compose.langfuse.yml restart
+# 重启 Pod（删除后自动重建）
+kubectl delete pod -n knowledgeweaver -l app=langfuse
 
 # 完全重建
-docker compose -f docker-compose.langfuse.yml down -v
-docker compose -f docker-compose.langfuse.yml up -d
+kubectl delete -k deploy/kubernetes/overlays/dev
+kubectl apply -k deploy/kubernetes/overlays/dev
 ```
 
 ### 问题 3: 连接超时

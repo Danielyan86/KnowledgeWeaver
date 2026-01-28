@@ -82,8 +82,13 @@ KnowledgeWeaver/
 │   ├── architecture-*.png       # 架构图
 │   └── *.md                     # 其他文档
 │
-├── docker/                       # Docker 相关配置
-│   └── docker-compose.*.yml     # Docker Compose 文件
+├── deploy/                       # 部署配置
+│   ├── docker/                  # Docker 镜像构建
+│   │   └── api/                 # API 服务 Dockerfile
+│   ├── kubernetes/              # Kubernetes 配置
+│   │   ├── base/                # 基础配置
+│   │   └── overlays/            # 环境特定配置
+│   └── terraform/               # AWS EKS 基础设施
 │
 ├── scripts/                      # 脚本工具
 │   ├── migrate_*.sh             # 数据迁移脚本
@@ -137,28 +142,26 @@ HOST=0.0.0.0
 PORT=9621
 ```
 
-### 3. 启动 Neo4j
+### 3. 部署服务
+
+**生产环境（AWS EKS）：**
+
+参考 [AWS 部署指南](docs/deployment/AWS_DEPLOYMENT_GUIDE.md) 进行 EKS 部署。
+
+**本地开发环境：**
 
 ```bash
-docker run -d \
-  --name neo4j \
-  -p 7474:7474 -p 7687:7687 \
-  -e NEO4J_AUTH=neo4j/password \
-  neo4j:latest
-```
-
-访问 http://localhost:7474 查看 Neo4j 浏览器。
-
-### 4. 启动服务
-
-```bash
+# 方式 1: 直接运行（需要单独启动 Neo4j）
 cd backend
 python server.py
+
+# 方式 2: 使用 Kubernetes（推荐）
+kubectl apply -k deploy/kubernetes/overlays/dev
 ```
 
-服务将在 `http://localhost:9621` 启动。
+服务将在配置的端口启动（默认 `http://localhost:9621`）。
 
-### 5. 处理文档
+### 4. 处理文档
 
 #### 方式 1：异步 API（推荐）
 ```bash

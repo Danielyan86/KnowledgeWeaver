@@ -1,0 +1,60 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'ECR repositories for KnowledgeWeaver Docker images'
+
+Parameters:
+  ProjectName:
+    Type: String
+    Default: knowledgeweaver
+
+  Environment:
+    Type: String
+    Default: production
+
+Resources:
+  # ECR Repository for API
+  APIRepository:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: !Sub '${ProjectName}-${Environment}-knowledgeweaver-api'
+      ImageScanningConfiguration:
+        ScanOnPush: true
+      EncryptionConfiguration:
+        EncryptionType: AES256
+      LifecyclePolicy:
+        LifecyclePolicyText: |
+          {
+            "rules": [
+              {
+                "rulePriority": 1,
+                "description": "Keep last 10 images",
+                "selection": {
+                  "tagStatus": "any",
+                  "countType": "imageCountMoreThan",
+                  "countNumber": 10
+                },
+                "action": {
+                  "type": "expire"
+                }
+              }
+            ]
+          }
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-${Environment}-api'
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+
+Outputs:
+  APIRepositoryUri:
+    Description: ECR Repository URI for API
+    Value: !GetAtt APIRepository.RepositoryUri
+    Export:
+      Name: !Sub '${AWS::StackName}-APIRepositoryUri'
+
+  APIRepositoryArn:
+    Description: ECR Repository ARN for API
+    Value: !GetAtt APIRepository.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-APIRepositoryArn'

@@ -1,0 +1,37 @@
+# Example Terraform variables
+# Copy this file to terraform.tfvars and customize
+
+# AWS Configuration
+aws_region = "ap-southeast-2"  # Sydney (closest to NZ)
+owner      = "your-name"
+
+# Project Configuration
+project_name = "knowledgeweaver"
+environment  = "production"
+
+# VPC Configuration
+vpc_cidr           = "10.0.0.0/16"
+availability_zones = ["ap-southeast-2a", "ap-southeast-2b"]
+
+# EKS Configuration
+eks_cluster_version = "1.28"
+
+node_group_config = {
+  instance_types = ["t3.medium"]  # $0.0416/hour each
+  disk_size      = 50             # GB
+  min_size       = 0              # Scale to 0 when stopped
+  max_size       = 5              # Max for burst traffic
+  desired_size   = 2              # Normal running state
+}
+
+# ECR Configuration
+ecr_repositories = ["knowledgeweaver-api"]
+
+# S3 Configuration (leave empty to auto-generate)
+s3_bucket_name = ""
+
+# CloudWatch Configuration
+cloudwatch_log_retention_days = 7  # Keep logs for 7 days
+
+# Cost Control
+enable_nat_gateway = true  # Set to false to save $32-64/month (breaks outbound internet)
