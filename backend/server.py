@@ -31,6 +31,10 @@ from .retrieval import get_qa_engine
 # 加载环境变量
 load_dotenv()
 
+# 初始化 Phoenix 追踪器（OpenTelemetry 自动追踪）
+from .core.phoenix_observability import get_phoenix_tracer
+phoenix_tracer = get_phoenix_tracer()
+
 # 创建 FastAPI 应用
 app = FastAPI(
     title="KnowledgeWeaver API",

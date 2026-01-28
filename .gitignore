@@ -52,6 +52,12 @@ data/chroma/
 data/progress/
 *.db
 *.sqlite3
+
+# Phoenix database files
+data/phoenix/*.db
+data/phoenix/*.db-shm
+data/phoenix/*.db-wal
+
 # Keep directory structure
 !**/.gitkeep
 

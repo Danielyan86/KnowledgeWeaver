@@ -1,0 +1,247 @@
+{
+  "version": "1.0.0",
+  "defaults": {
+    "auto_fix": false,
+    "verbose": false,
+    "create_missing_dirs": true,
+    "backup_before_move": false
+  },
+  "root_allowed_files": {
+    "config": [
+      ".env.example",
+      ".gitignore",
+      ".gitattributes",
+      "requirements.txt",
+      "package.json",
+      "package-lock.json",
+      "yarn.lock",
+      "Pipfile",
+      "Pipfile.lock",
+      "poetry.lock",
+      "pyproject.toml",
+      "setup.py",
+      "setup.cfg",
+      "tsconfig.json",
+      ".pylintrc",
+      ".eslintrc",
+      ".prettierrc",
+      ".editorconfig",
+      "Makefile"
+    ],
+    "documentation": [
+      "README.md",
+      "README_CN.md",
+      "CHANGELOG.md",
+      "CONTRIBUTING.md",
+      "LICENSE",
+      "LICENSE.md",
+      "CLAUDE.md"
+    ],
+    "build": [
+      "Dockerfile",
+      "docker-compose.yml"
+    ],
+    "ci_cd": [
+      ".github",
+      ".gitlab-ci.yml",
+      ".travis.yml",
+      "Jenkinsfile"
+    ]
+  },
+  "should_move": {
+    "tests": {
+      "patterns": [
+        "test_*.py",
+        "*_test.py",
+        "*.test.js",
+        "*.test.ts",
+        "*.spec.js",
+        "*.spec.ts",
+        "test_*.sh"
+      ],
+      "target": "tests/",
+      "severity": "major"
+    },
+    "docker": {
+      "patterns": [
+        "docker-compose.*.yml",
+        "docker-compose.*.yaml",
+        "Dockerfile.*"
+      ],
+      "target": "docker/",
+      "severity": "major",
+      "exceptions": [
+        "docker-compose.yml",
+        "Dockerfile"
+      ]
+    },
+    "documentation": {
+      "patterns": [
+        "*.md",
+        "*.png",
+        "*.jpg",
+        "*.svg",
+        "docs/*.html"
+      ],
+      "target": "docs/",
+      "severity": "minor",
+      "exceptions": [
+        "README.md",
+        "README_CN.md",
+        "CHANGELOG.md",
+        "CONTRIBUTING.md",
+        "LICENSE.md",
+        "CLAUDE.md"
+      ]
+    },
+    "scripts": {
+      "patterns": [
+        "*.sh",
+        "deploy*.py",
+        "migrate*.py",
+        "setup*.sh"
+      ],
+      "target": "scripts/",
+      "severity": "minor",
+      "exceptions": [
+        "setup.sh"
+      ]
+    }
+  },
+  "should_delete": {
+    "system_files": {
+      "patterns": [
+        ".DS_Store",
+        "Thumbs.db",
+        "desktop.ini"
+      ],
+      "severity": "minor"
+    },
+    "temp_files": {
+      "patterns": [
+        "*.tmp",
+        "*.temp",
+        "*.cache",
+        "*.bak",
+        "*~"
+      ],
+      "severity": "minor"
+    }
+  },
+  "should_ignore": {
+    "patterns": [
+      ".DS_Store",
+      "Thumbs.db",
+      "desktop.ini",
+      "*.log",
+      ".env",
+      ".env.local",
+      ".env.*.local",
+      "data/storage/",
+      "data/inputs/",
+      "data/checkpoints/",
+      "data/cache/",
+      "logs/",
+      "*.pid",
+      "__pycache__/",
+      "*.pyc",
+      ".pytest_cache/",
+      "node_modules/",
+      "dist/",
+      "build/",
+      ".vscode/",
+      ".idea/"
+    ]
+  },
+  "sensitive_patterns": {
+    "passwords": [
+      "password\\s*[:=]\\s*[\"']?[^\\s\"']+",
+      "PASSWORD\\s*[:=]\\s*[\"']?[^\\s\"']+",
+      "POSTGRES_PASSWORD\\s*[:=]\\s*[^\\s\"']+"
+    ],
+    "api_keys": [
+      "api[_-]?key\\s*[:=]\\s*[\"']?[^\\s\"']+",
+      "API[_-]?KEY\\s*[:=]\\s*[\"']?[^\\s\"']+"
+    ],
+    "secrets": [
+      "secret\\s*[:=]\\s*[\"']?[^\\s\"']+",
+      "SECRET\\s*[:=]\\s*[\"']?[^\\s\"']+",
+      "NEXTAUTH_SECRET\\s*[:=]\\s*[^\\s\"']+"
+    ],
+    "tokens": [
+      "token\\s*[:=]\\s*[\"']?[^\\s\"']+",
+      "TOKEN\\s*[:=]\\s*[\"']?[^\\s\"']+"
+    ],
+    "database_urls": [
+      "DATABASE_URL\\s*[:=]\\s*postgresql://[^\\s]+"
+    ]
+  },
+  "standard_directories": [
+    "backend/",
+    "frontend/",
+    "tests/",
+    "docs/",
+    "scripts/",
+    "data/",
+    "logs/"
+  ],
+  "optional_directories": [
+    "docker/",
+    "tools/",
+    "config/",
+    "migrations/",
+    "static/",
+    "templates/"
+  ],
+  "severity_levels": {
+    "critical": {
+      "description": "安全问题或严重违反规范",
+      "actions": [
+        "敏感信息暴露",
+        ".env 文件被提交"
+      ]
+    },
+    "major": {
+      "description": "影响项目结构清晰度",
+      "actions": [
+        "测试文件在根目录",
+        "Docker 配置在根目录",
+        "源代码在根目录"
+      ]
+    },
+    "minor": {
+      "description": "小的规范问题",
+      "actions": [
+        "文档文件在根目录",
+        "临时文件存在",
+        ".gitignore 不完整"
+      ]
+    }
+  },
+  "output": {
+    "format": "markdown",
+    "show_commands": true,
+    "show_examples": true,
+    "include_metrics": true,
+    "generate_script": true
+  },
+  "project_specific": {
+    "KnowledgeWeaver": {
+      "structure": {
+        "backend/": "后端源代码",
+        "frontend/": "前端源代码",
+        "tests/": "所有测试文件",
+        "docker/": "Docker 配置",
+        "docs/": "文档",
+        "scripts/": "脚本工具",
+        "data/": "数据目录（.gitignore）",
+        "logs/": "日志目录（.gitignore）",
+        "tools/": "开发工具"
+      },
+      "exceptions": {
+        "CLAUDE.md": "项目配置文档",
+        "README_CN.md": "中文说明"
+      }
+    }
+  }
+}

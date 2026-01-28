@@ -43,3 +43,4 @@ See `example-skill/` for a template you can copy and modify.
 
 - `example-skill/` - Template for creating new skills
 - `code-review/` - 深度代码审查，基于Clean Code、Clean Architecture、SOLID等原则，自动运行单元测试
+- `project-organize/` - 检查和整理项目结构，确保符合Clean Architecture原则，自动移动错位的文件
