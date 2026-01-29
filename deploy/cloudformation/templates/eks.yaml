@@ -117,7 +117,6 @@ Resources:
         - arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy
         - arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly
         - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
-        - arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy
       Tags:
         - Key: Name
           Value: !Sub '${ProjectName}-${Environment}-eks-node-role'
@@ -150,18 +149,64 @@ Resources:
         Project: !Ref ProjectName
         Environment: !Ref Environment
 
-  # Note: EBS CSI Driver requires IRSA (IAM Roles for Service Accounts)
-  # For now, we'll install it without ServiceAccountRole and configure IRSA later
-  # The addon will use the node IAM role permissions
+  # OIDC Identity Provider for IRSA (IAM Roles for Service Accounts)
+  OIDCProvider:
+    Type: AWS::IAM::OIDCProvider
+    Properties:
+      Url: !GetAtt EKSCluster.OpenIdConnectIssuerUrl
+      ClientIdList:
+        - sts.amazonaws.com
+      ThumbprintList:
+        - 9e99a48a9960b14926bb7f3b02e22da2b0ab7280
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-${Environment}-oidc-provider'
 
-  # EBS CSI Driver Addon
+  # EBS CSI Driver IAM Role (uses IRSA for secure pod authentication)
+  EBSCSIDriverRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${ProjectName}-${Environment}-ebs-csi-driver-role'
+      AssumeRolePolicyDocument:
+        Fn::Sub:
+          - |
+            {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Principal": {
+                    "Federated": "${OIDCProviderArn}"
+                  },
+                  "Action": "sts:AssumeRoleWithWebIdentity",
+                  "Condition": {
+                    "StringEquals": {
+                      "${OIDCUrl}:sub": "system:serviceaccount:kube-system:ebs-csi-controller-sa",
+                      "${OIDCUrl}:aud": "sts.amazonaws.com"
+                    }
+                  }
+                }
+              ]
+            }
+          - OIDCProviderArn: !GetAtt OIDCProvider.Arn
+            OIDCUrl: !GetAtt EKSCluster.OpenIdConnectIssuerUrl
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-${Environment}-ebs-csi-driver-role'
+
+  # EBS CSI Driver Addon with IRSA
   EBSCSIDriverAddon:
     Type: AWS::EKS::Addon
-    DependsOn: NodeGroup
+    DependsOn:
+      - NodeGroup
+      - EBSCSIDriverRole
     Properties:
       ClusterName: !Ref EKSCluster
       AddonName: aws-ebs-csi-driver
-      # ServiceAccountRoleArn will be added after OIDC Provider setup
+      ServiceAccountRoleArn: !GetAtt EBSCSIDriverRole.Arn
+      ResolveConflicts: OVERWRITE
 
   # VPC CNI Addon
   VPCCNIAddon:
@@ -217,6 +262,18 @@ Outputs:
     Value: !GetAtt EKSCluster.OpenIdConnectIssuerUrl
     Export:
       Name: !Sub '${AWS::StackName}-OIDCProviderUrl'
+
+  OIDCProviderArn:
+    Description: OIDC Provider ARN for creating additional IRSA roles
+    Value: !GetAtt OIDCProvider.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-OIDCProviderArn'
+
+  EBSCSIDriverRoleArn:
+    Description: IAM Role ARN for EBS CSI Driver
+    Value: !GetAtt EBSCSIDriverRole.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-EBSCSIDriverRoleArn'
 
   ConfigureKubectl:
     Description: Command to configure kubectl
