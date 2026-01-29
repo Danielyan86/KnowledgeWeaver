@@ -44,6 +44,11 @@ docs/
 
 - `AWS_DEPLOYMENT_GUIDE.md` - Complete AWS deployment guide for KnowledgeWeaver
 - `AWS_IAM_CLI_SETUP_GUIDE.md` - AWS IAM and CLI setup instructions
+- `AWS_EKS_DEPLOYMENT.md` - AWS EKS deployment detailed guide
+- `EKS_CONCEPTS_GUIDE.md` - EKS concepts and best practices
+- `EKS_IRSA_FIX.md` - EKS IRSA (IAM Roles for Service Accounts) troubleshooting
+- `DOCKER_IMAGE_BUILD.md` - Docker image build and registry guide
+- `DEPLOYMENT_READINESS.md` - Deployment readiness checklist and validation
 
 ## Database
 
@@ -67,6 +72,7 @@ docs/
 
 - `PROJECT_STRUCTURE.md` - Project structure and module organization
 - `TEST_SUITE.md` - Testing framework and test suite documentation
+- `CONFIGURATION_REVIEW.md` - Configuration management and environment setup guide
 
 ## Security
 

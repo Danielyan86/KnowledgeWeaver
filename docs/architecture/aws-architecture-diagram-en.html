@@ -262,8 +262,7 @@
             {id: 'node2', x: 320, y: 500, width: 180, height: 70, label: 'Worker Node 2\nt3.medium', color: colors.node},
 
             // Pods on Node 1
-            {id: 'api-pod1', x: 130, y: 600, width: 80, height: 60, label: 'API Pod\n(FastAPI)', color: colors.api},
-            {id: 'api-pod2', x: 220, y: 600, width: 80, height: 60, label: 'API Pod\n(FastAPI)', color: colors.api},
+            {id: 'api-pod1', x: 175, y: 600, width: 80, height: 60, label: 'API Pod\n(FastAPI)', color: colors.api},
 
             // Pods on Node 2
             {id: 'neo4j-pod', x: 330, y: 600, width: 80, height: 60, label: 'Neo4j\nPod', color: colors.neo4j, shape: 'cylinder'},
@@ -384,7 +383,6 @@
 
             // Nodes to Pods
             {from: 'node1', to: 'api-pod1', type: 'solid'},
-            {from: 'node1', to: 'api-pod2', type: 'solid'},
             {from: 'node2', to: 'neo4j-pod', type: 'solid'},
             {from: 'node2', to: 'phoenix-pod', type: 'solid'},
             {from: 'node2', to: 'postgres-pod', type: 'solid'},
@@ -393,9 +391,8 @@
             {from: 'neo4j-pod', to: 'ebs', type: 'solid'},
             {from: 'postgres-pod', to: 'ebs', type: 'solid'},
 
-            // API pods to Neo4j
+            // API pod to Neo4j
             {from: 'api-pod1', to: 'neo4j-pod', type: 'dashed'},
-            {from: 'api-pod2', to: 'neo4j-pod', type: 'dashed'},
 
             // NAT Gateway
             {from: 'node1', to: 'nat', type: 'dashed'},
