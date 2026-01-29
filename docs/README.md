@@ -35,8 +35,12 @@ docs/
 - **Interactive Diagrams** (Recommended)
   - `aws-architecture-diagram-cn.html` - Chinese AWS cloud architecture (D3.js)
   - `aws-architecture-diagram-en.html` - English AWS cloud architecture (D3.js)
-  - Visualizes VPC, subnets, ECS Fargate, Neo4j EC2, and AWS managed services
+  - Visualizes VPC, subnets, EKS cluster, pods, and AWS managed services
   - Open in browser for interactive visualization with hover effects
+
+- **Documentation**
+  - `README.md` - Architecture overview and cost estimates
+  - `ARCHITECTURE_UPDATES.md` - Version 2.0 changelog (demo environment)
 
 ## Deployment
 

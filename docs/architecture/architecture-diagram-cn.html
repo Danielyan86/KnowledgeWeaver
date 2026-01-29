@@ -193,7 +193,7 @@
             {id: 'normalize', x: 650, y: 150, width: 90, height: 60, label: '规范化', color: colors.normalize},
 
             // Storage
-            {id: 'json', x: 800, y: 150, width: 100, height: 60, label: 'JSON\n图谱文件', color: colors.storage, shape: 'cylinder'},
+            {id: 'neo4j', x: 800, y: 150, width: 100, height: 60, label: 'Neo4j\n图数据库', color: colors.storage, shape: 'cylinder'},
             {id: 'chroma', x: 800, y: 230, width: 100, height: 60, label: 'ChromaDB\n向量库', color: colors.chroma, shape: 'cylinder'},
 
             // Embedding
@@ -312,14 +312,14 @@
             {from: 'chunk', to: 'extract', type: 'solid'},
             {from: 'extract', to: 'merge', type: 'solid'},
             {from: 'merge', to: 'normalize', type: 'solid'},
-            {from: 'normalize', to: 'json', type: 'solid'},
+            {from: 'normalize', to: 'neo4j', type: 'solid'},
 
             // Embedding flow
             {from: 'chunk', to: 'embedding', type: 'solid'},
             {from: 'embedding', to: 'chroma', type: 'solid'},
 
             // Storage to API
-            {from: 'json', to: 'api', type: 'solid'},
+            {from: 'neo4j', to: 'api', type: 'solid'},
             {from: 'chroma', to: 'api', type: 'solid'},
 
             // API flow

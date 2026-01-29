@@ -604,10 +604,25 @@ async def get_document_progress(doc_id: str):
     return progress
 
 
-# 挂载静态文件目录（放在所有API路由之后）
-# 这样API路由优先匹配，静态文件作为fallback
+# Serve specific static files before mounting catch-all
 if FRONTEND_DIR.exists():
-    app.mount("/", StaticFiles(directory=str(FRONTEND_DIR), html=True), name="frontend")
+    # Serve JavaScript files
+    @app.get("/kg-config.js")
+    async def serve_kg_config():
+        return FileResponse(FRONTEND_DIR / "kg-config.js", media_type="application/javascript")
+
+    @app.get("/kg-normalizer.js")
+    async def serve_kg_normalizer():
+        return FileResponse(FRONTEND_DIR / "kg-normalizer.js", media_type="application/javascript")
+
+    @app.get("/graph.js")
+    async def serve_graph():
+        return FileResponse(FRONTEND_DIR / "graph.js", media_type="application/javascript")
+
+    # Serve index.html for root and other paths
+    @app.get("/")
+    async def serve_index():
+        return FileResponse(FRONTEND_DIR / "index.html")
 
 
 # 主程序入口

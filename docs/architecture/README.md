@@ -135,6 +135,20 @@ See [Public Access Guide](../../deploy/kubernetes/PUBLIC_ACCESS_GUIDE.md) for de
 
 ---
 
+## Recent Updates
+
+**Version 2.0 (2026-01-29)** - Demo/Interview Configuration
+
+Key changes:
+- ✅ Updated to demo environment (namespace: `demo`, 1 API pod)
+- ✅ Simplified deployment (removed overlays)
+- ✅ Added 3 public access methods (LoadBalancer/Ingress/NodePort)
+- ✅ Corrected storage layer (Neo4j instead of JSON)
+- ✅ Improved architecture diagram visuals
+- ✅ 60% cost reduction (~$60-80/month for 8hrs/day)
+
+See [Architecture Updates](ARCHITECTURE_UPDATES.md) for full changelog.
+
 ## How to View Interactive Diagrams
 
 1. Download or clone the repository
