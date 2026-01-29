@@ -19,7 +19,15 @@ KnowledgeWeaver 是一个结合了知识图谱（Knowledge Graph）和检索增�
 
 ## 系统架构
 
+### 应用架构
+
 ![系统架构图](docs/architecture/architecture-cn.png)
+
+### AWS 部署架构
+
+AWS 部署架构和基础设施设计，请查看：
+- [交互式 AWS 架构图](docs/architecture/aws-architecture-diagram-cn.html)
+- [AWS 部署指南](docs/deployment/AWS_DEPLOYMENT_GUIDE.md)
 
 ### 处理流程
 
@@ -29,11 +37,11 @@ KnowledgeWeaver 是一个结合了知识图谱（Knowledge Graph）和检索增�
    - LLM 实体和关系提取
    - 知识合并和规范化
 3. **存储层**：
-   - JSON 文件存储
-   - ChromaDB 向量数据库
+   - Neo4j 图数据库（知识图谱存储）
+   - ChromaDB 向量数据库（语义搜索）
 4. **服务层**：
    - FastAPI 后端服务
-   - 混合检索器
+   - 混合检索器（KG + RAG）
    - QA 引擎
 5. **前端层**：
    - D3.js 知识图谱可视化
@@ -43,8 +51,9 @@ KnowledgeWeaver 是一个结合了知识图谱（Knowledge Graph）和检索增�
 
 ### 后端
 - **FastAPI**：高性能 Web 框架
-- **OpenAI**：LLM 集成
-- **ChromaDB**：向量数据库
+- **LLM 集成**：OpenAI API / 自定义端点
+- **Neo4j**：图数据库，用于知识图谱存储
+- **ChromaDB**：向量数据库，用于语义搜索
 - **Jinja2**：提示词模板引擎
 
 ### 前端
@@ -67,8 +76,15 @@ pip install -r requirements.txt
 创建 `.env` 文件并配置：
 
 ```bash
+# LLM 配置
 LLM_BINDING_HOST=https://space.ai-builders.com/backend/v1
 LLM_BINDING_API_KEY=your_api_key_here
+
+# Neo4j 配置
+USE_NEO4J=true
+NEO4J_URI=bolt://localhost:7687
+NEO4J_USER=neo4j
+NEO4J_PASSWORD=your_neo4j_password
 ```
 
 ### 启动服务
@@ -99,8 +115,12 @@ KnowledgeWeaver/
 ├── frontend/            # 前端代码
 │   ├── kg-config.js     # 图谱配置
 │   └── kg-normalizer.js # 图谱规范化
-├── rag_storage/         # RAG 存储目录
-├── data/                # 数据目录
+├── data/                # 数据目录（gitignored）
+│   ├── storage/         # 持久化存储
+│   │   └── vector_db/   # 向量数据库（ChromaDB）
+│   ├── checkpoints/     # 处理检查点（支持断点续传）
+│   ├── progress/        # 进度追踪数据
+│   └── inputs/          # 用户上传文件
 ├── docs/                # 文档
 │   ├── architecture/    # 架构图和设计文档
 │   ├── deployment/      # AWS 和部署指南

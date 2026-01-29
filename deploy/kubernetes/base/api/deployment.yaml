@@ -7,7 +7,7 @@ metadata:
     app: api
     component: backend
 spec:
-  replicas: 2
+  replicas: 1
   strategy:
     type: RollingUpdate
     rollingUpdate:
@@ -25,7 +25,7 @@ spec:
     spec:
       containers:
       - name: api
-        image: PLACEHOLDER_ECR_REPO/knowledgeweaver-api:latest  # Will be replaced by CI/CD
+        image: 858766041545.dkr.ecr.ap-southeast-2.amazonaws.com/knowledgeweaver-api:latest
         imagePullPolicy: Always
         ports:
         - name: http
@@ -61,6 +61,12 @@ spec:
             secretKeyRef:
               name: knowledgeweaver-secrets
               key: LANGFUSE_SECRET_KEY
+              optional: true
+        - name: GEMINI_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: knowledgeweaver-secrets
+              key: GEMINI_API_KEY
               optional: true
 
         # Resource limits

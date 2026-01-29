@@ -198,20 +198,17 @@
 
         // Group definitions
         const groups = [
-            // AWS Cloud
-            {id: 'aws', x: 30, y: 100, width: 1340, height: 700, label: 'AWS 云', class: 'vpc'},
-
             // VPC
-            {id: 'vpc', x: 50, y: 140, width: 900, height: 620, label: 'VPC (10.0.0.0/16)', class: 'vpc'},
+            {id: 'vpc', x: 30, y: 100, width: 900, height: 700, label: 'VPC (10.0.0.0/16)', class: 'vpc'},
 
             // Public Subnet
-            {id: 'public', x: 70, y: 190, width: 350, height: 280, label: '公共子网 (10.0.1.0/24)', class: 'subnet'},
+            {id: 'public', x: 50, y: 150, width: 350, height: 280, label: '公共子网 (10.0.1.0/24)', class: 'subnet'},
 
             // Private Subnet
-            {id: 'private', x: 70, y: 500, width: 350, height: 230, label: '私有子网 (10.0.2.0/24)', class: 'subnet'},
+            {id: 'private', x: 50, y: 460, width: 350, height: 270, label: '私有子网 (10.0.2.0/24)', class: 'subnet'},
 
             // AWS Managed Services
-            {id: 'services', x: 980, y: 140, width: 370, height: 620, label: 'AWS 托管服务', class: 'services'}
+            {id: 'services', x: 960, y: 100, width: 370, height: 700, label: 'AWS 托管服务', class: 'services'}
         ];
 
         // Draw groups
@@ -243,7 +240,7 @@
             {id: 'nat', x: 200, y: 370, width: 100, height: 60, label: 'NAT\n网关', color: colors.nat},
 
             // Private Subnet Components
-            {id: 'ecs', x: 150, y: 550, width: 200, height: 70, label: 'ECS Fargate\nFastAPI 容器\n(自动扩展)', color: colors.ecs},
+            {id: 'ecs', x: 150, y: 550, width: 200, height: 70, label: 'ECS Fargate\nFastAPI 容器\n(演示环境)', color: colors.ecs},
             {id: 'neo4j', x: 500, y: 300, width: 140, height: 80, label: 'Neo4j EC2\nt3.medium', color: colors.neo4j, shape: 'cylinder'},
 
             // AWS Managed Services

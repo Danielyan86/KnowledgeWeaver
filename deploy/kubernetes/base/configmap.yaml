@@ -28,3 +28,18 @@ data:
   # Langfuse observability
   LANGFUSE_ENABLED: "true"
   LANGFUSE_HOST: "http://langfuse:3000"
+
+  # LLM Configuration
+  LLM_BINDING_HOST: "https://space.ai-builders.com/backend/v1"
+  LLM_MODEL: "deepseek"
+
+  # Extraction LLM Backend
+  EXTRACTION_LLM_BACKEND: "gemini"
+  GEMINI_MODEL: "gemini-2.0-flash"
+
+  # RAG Configuration
+  EMBEDDING_MODEL: "text-embedding-ada-002"
+  CHROMA_PERSIST_DIR: "/app/data/storage/vector_db"
+  RAG_CHUNK_SIZE: "500"
+  RAG_CHUNK_OVERLAP: "50"
+  RAG_TOP_K: "5"

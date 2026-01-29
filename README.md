@@ -19,7 +19,15 @@ KnowledgeWeaver is an intelligent question-answering system that combines Knowle
 
 ## System Architecture
 
+### Application Architecture
+
 ![Architecture Diagram](docs/architecture/architecture-en.png)
+
+### AWS Deployment Architecture
+
+For AWS deployment architecture and infrastructure design, see:
+- [Interactive AWS Architecture Diagram](docs/architecture/aws-architecture-diagram-en.html)
+- [AWS Deployment Guide](docs/deployment/AWS_DEPLOYMENT_GUIDE.md)
 
 ### Processing Pipeline
 
@@ -29,11 +37,11 @@ KnowledgeWeaver is an intelligent question-answering system that combines Knowle
    - LLM entity and relationship extraction
    - Knowledge merging and normalization
 3. **Storage Layer**:
-   - JSON file storage
-   - ChromaDB vector database
+   - Neo4j graph database (knowledge graph storage)
+   - ChromaDB vector database (semantic search)
 4. **Service Layer**:
    - FastAPI backend service
-   - Hybrid retriever
+   - Hybrid retriever (KG + RAG)
    - QA engine
 5. **Frontend Layer**:
    - D3.js knowledge graph visualization
@@ -43,8 +51,9 @@ KnowledgeWeaver is an intelligent question-answering system that combines Knowle
 
 ### Backend
 - **FastAPI**: High-performance web framework
-- **OpenAI**: LLM integration
-- **ChromaDB**: Vector database
+- **LLM Integration**: OpenAI API / Custom endpoints
+- **Neo4j**: Graph database for knowledge graph storage
+- **ChromaDB**: Vector database for semantic search
 - **Jinja2**: Prompt template engine
 
 ### Frontend
@@ -74,8 +83,15 @@ pip install -r requirements.txt
 Create a `.env` file and configure:
 
 ```bash
+# LLM Configuration
 LLM_BINDING_HOST=https://space.ai-builders.com/backend/v1
 LLM_BINDING_API_KEY=your_api_key_here
+
+# Neo4j Configuration
+USE_NEO4J=true
+NEO4J_URI=bolt://localhost:7687
+NEO4J_USER=neo4j
+NEO4J_PASSWORD=your_neo4j_password
 ```
 
 ### Start Service
@@ -108,9 +124,9 @@ KnowledgeWeaver/
 │   └── kg-normalizer.js # Graph normalization
 ├── data/                # Data directory (gitignored)
 │   ├── storage/         # Persistent storage
-│   │   ├── graphs/      # Knowledge graphs (JSON)
-│   │   ├── rag/         # RAG storage
 │   │   └── vector_db/   # Vector database (ChromaDB)
+│   ├── checkpoints/     # Processing checkpoints (resume capability)
+│   ├── progress/        # Progress tracking data
 │   ├── inputs/          # User uploaded files
 │   └── cache/           # Cache data
 ├── docs/                # Documentation

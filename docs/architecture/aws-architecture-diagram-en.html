@@ -210,23 +210,20 @@
 
         // Group definitions
         const groups = [
-            // AWS Cloud
-            {id: 'aws', x: 30, y: 100, width: 1440, height: 750, label: 'AWS CLOUD', class: 'vpc'},
-
             // VPC
-            {id: 'vpc', x: 50, y: 140, width: 1000, height: 670, label: 'VPC (10.0.0.0/16)', class: 'vpc'},
+            {id: 'vpc', x: 30, y: 100, width: 1000, height: 750, label: 'VPC (10.0.0.0/16)', class: 'vpc'},
 
             // Public Subnet
-            {id: 'public', x: 70, y: 190, width: 350, height: 200, label: 'PUBLIC SUBNET', class: 'subnet'},
+            {id: 'public', x: 50, y: 150, width: 350, height: 200, label: 'PUBLIC SUBNET', class: 'subnet'},
 
             // Private Subnet
-            {id: 'private', x: 70, y: 420, width: 960, height: 360, label: 'PRIVATE SUBNET', class: 'subnet'},
+            {id: 'private', x: 50, y: 380, width: 960, height: 440, label: 'PRIVATE SUBNET', class: 'subnet'},
 
             // EKS Cluster
-            {id: 'eks-cluster', x: 90, y: 460, width: 920, height: 290, label: 'EKS CLUSTER (Kubernetes 1.28)', class: 'cluster'},
+            {id: 'eks-cluster', x: 70, y: 420, width: 920, height: 370, label: 'EKS CLUSTER (Kubernetes 1.28)', class: 'cluster'},
 
             // AWS Managed Services
-            {id: 'services', x: 1080, y: 140, width: 390, height: 670, label: 'AWS MANAGED SERVICES', class: 'services'}
+            {id: 'services', x: 1060, y: 100, width: 390, height: 750, label: 'AWS MANAGED SERVICES', class: 'services'}
         ];
 
         // Draw groups
