@@ -21,11 +21,11 @@ metadata:
     # alb.ingress.kubernetes.io/ssl-redirect: '443'
 
     # Tags for cost allocation
-    alb.ingress.kubernetes.io/tags: Environment=production,Project=knowledgeweaver,ManagedBy=Terraform
+    alb.ingress.kubernetes.io/tags: Environment=demo,Project=knowledgeweaver
 
   labels:
     app: knowledgeweaver
-    environment: production
+    environment: demo
 spec:
   rules:
   - http:

@@ -25,13 +25,13 @@ set +a
 # Check if kubectl is configured
 if ! kubectl cluster-info &>/dev/null; then
   echo -e "${RED}❌ Error: kubectl not configured${NC}"
-  echo "Run: aws eks update-kubeconfig --region ap-southeast-2 --name knowledgeweaver-production"
+  echo "Run: aws eks update-kubeconfig --region ap-southeast-2 --name knowledgeweaver-demouction"
   exit 1
 fi
 
 # Create namespace if not exists
-kubectl create namespace prod --dry-run=client -o yaml | kubectl apply -f -
-echo -e "${GREEN}✅ Namespace 'prod' ready${NC}"
+kubectl create namespace demo --dry-run=client -o yaml | kubectl apply -f -
+echo -e "${GREEN}✅ Namespace 'demo' ready${NC}"
 
 # Create knowledgeweaver-secrets
 echo -e "${YELLOW}Creating knowledgeweaver-secrets...${NC}"
@@ -41,7 +41,7 @@ kubectl create secret generic knowledgeweaver-secrets \
   --from-literal=GEMINI_API_KEY="${GEMINI_API_KEY}" \
   --from-literal=LANGFUSE_PUBLIC_KEY="${LANGFUSE_PUBLIC_KEY}" \
   --from-literal=LANGFUSE_SECRET_KEY="${LANGFUSE_SECRET_KEY}" \
-  --namespace prod \
+  --namespace demo \
   --dry-run=client -o yaml | kubectl apply -f -
 
 echo -e "${GREEN}✅ knowledgeweaver-secrets created${NC}"
@@ -56,7 +56,7 @@ kubectl create secret generic langfuse-secrets \
   --from-literal=NEXTAUTH_SECRET="${NEXTAUTH_SECRET}" \
   --from-literal=SALT="${SALT}" \
   --from-literal=POSTGRES_PASSWORD="${POSTGRES_PASSWORD}" \
-  --namespace prod \
+  --namespace demo \
   --dry-run=client -o yaml | kubectl apply -f -
 
 echo -e "${GREEN}✅ langfuse-secrets created${NC}"
@@ -67,8 +67,8 @@ echo -e "${GREEN}✅ All secrets created successfully!${NC}"
 echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo ""
 echo "Verify with:"
-echo "  kubectl get secrets -n prod"
+echo "  kubectl get secrets -n demo"
 echo ""
 echo "View secret (base64 decoded):"
-echo "  kubectl get secret knowledgeweaver-secrets -n prod -o jsonpath='{.data.NEO4J_PASSWORD}' | base64 -d"
+echo "  kubectl get secret knowledgeweaver-secrets -n demo -o jsonpath='{.data.NEO4J_PASSWORD}' | base64 -d"
 echo ""

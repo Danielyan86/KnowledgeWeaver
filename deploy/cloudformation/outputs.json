@@ -1,0 +1,47 @@
+[
+    {
+        "OutputKey": "PrivateSubnetIds",
+        "OutputValue": "subnet-08a51b70e02e2dd93,subnet-0979d741a9df651aa",
+        "Description": "Private Subnet IDs"
+    },
+    {
+        "OutputKey": "PublicSubnetIds",
+        "OutputValue": "subnet-0b2bcd13641124ad6,subnet-030cc92c2918595e2",
+        "Description": "Public Subnet IDs"
+    },
+    {
+        "OutputKey": "VpcId",
+        "OutputValue": "vpc-0e0bb7d690ad89764",
+        "Description": "VPC ID"
+    },
+    {
+        "OutputKey": "QuickStartCommands",
+        "OutputValue": "# 1. Configure kubectl\naws eks update-kubeconfig --region ap-southeast-2 --name knowledgeweaver-production\n\n# 2. Verify cluster\nkubectl get nodes\n\n# 3. Install ALB Controller\ncd deploy/kubernetes/scripts\n./install-alb-controller.sh\n\n# 4. Build and push Docker image\naws ecr get-login-password --region ap-southeast-2 | docker login --username AWS --password-stdin 858766041545.dkr.ecr.ap-southeast-2.amazonaws.com/knowledgeweaver-production-knowledgeweaver-api\ndocker build -t 858766041545.dkr.ecr.ap-southeast-2.amazonaws.com/knowledgeweaver-production-knowledgeweaver-api:latest -f deploy/docker/api/Dockerfile .\ndocker push 858766041545.dkr.ecr.ap-southeast-2.amazonaws.com/knowledgeweaver-production-knowledgeweaver-api:latest\n\n# 5. Deploy application\ncd deploy/kubernetes/scripts\n./deploy.sh\n\n# 6. Get ALB URL\nkubectl get ingress -n demo\n",
+        "Description": "Quick start commands"
+    },
+    {
+        "OutputKey": "ClusterName",
+        "OutputValue": "knowledgeweaver-production",
+        "Description": "EKS Cluster Name"
+    },
+    {
+        "OutputKey": "ConfigureKubectl",
+        "OutputValue": "aws eks update-kubeconfig --region ap-southeast-2 --name knowledgeweaver-production",
+        "Description": "Command to configure kubectl"
+    },
+    {
+        "OutputKey": "S3BucketName",
+        "OutputValue": "knowledgeweaver-production-documents-858766041545",
+        "Description": "S3 Bucket Name"
+    },
+    {
+        "OutputKey": "ClusterEndpoint",
+        "OutputValue": "https://2A9A59D53897B15A021CE4E24AC10B71.gr7.ap-southeast-2.eks.amazonaws.com",
+        "Description": "EKS Cluster Endpoint"
+    },
+    {
+        "OutputKey": "ECRRepositoryUri",
+        "OutputValue": "858766041545.dkr.ecr.ap-southeast-2.amazonaws.com/knowledgeweaver-production-knowledgeweaver-api",
+        "Description": "ECR Repository URI for API"
+    }
+]

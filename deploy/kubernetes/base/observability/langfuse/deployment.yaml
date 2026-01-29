@@ -33,21 +33,20 @@ spec:
 
       containers:
       - name: langfuse
-        image: langfuse/langfuse:latest
+        image: langfuse/langfuse:2
         ports:
         - name: http
           containerPort: 3000
           protocol: TCP
 
         env:
-        # NOTE: Replace $(POSTGRES_PASSWORD) with actual secret reference in production
-        - name: DATABASE_URL
-          value: postgresql://langfuse:POSTGRES_PASSWORD_FROM_SECRET@postgres:5432/langfuse
         - name: POSTGRES_PASSWORD
           valueFrom:
             secretKeyRef:
               name: langfuse-secrets
               key: POSTGRES_PASSWORD
+        - name: DATABASE_URL
+          value: postgresql://langfuse:$(POSTGRES_PASSWORD)@postgres:5432/langfuse
         - name: NEXTAUTH_URL
           value: http://langfuse:3000
         - name: NEXTAUTH_SECRET

@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: api-public
+  namespace: demo
+  labels:
+    app: api
+    component: backend
+  annotations:
+    # AWS Network Load Balancer (NLB) - faster and cheaper for demo
+    service.beta.kubernetes.io/aws-load-balancer-type: "nlb"
+    service.beta.kubernetes.io/aws-load-balancer-scheme: "internet-facing"
+    service.beta.kubernetes.io/aws-load-balancer-cross-zone-load-balancing-enabled: "true"
+spec:
+  type: LoadBalancer  # ← 关键：创建公网 Load Balancer
+  selector:
+    app: api
+  ports:
+  - name: http
+    port: 80          # 外部访问端口
+    targetPort: 9621  # Pod 端口
+    protocol: TCP
+  sessionAffinity: None

@@ -138,24 +138,24 @@ Resources:
         - Key: Name
           Value: !Sub '${ProjectName}-${Environment}-s3-stack'
 
-  # 5. CloudWatch Stack (depends on EKS)
-  CloudWatchStack:
-    Type: AWS::CloudFormation::Stack
-    DependsOn: EKSStack
-    Properties:
-      TemplateURL: !If
-        - UseS3Templates
-        - !Sub 'https://${TemplatesBucketName}.s3.${AWS::Region}.amazonaws.com/cloudwatch.yaml'
-        - 'file://./templates/cloudwatch.yaml'
-      Parameters:
-        ProjectName: !Ref ProjectName
-        Environment: !Ref Environment
-        EKSStackName: !GetAtt EKSStack.Outputs.StackName
-        LogRetentionDays: !Ref LogRetentionDays
-        CostAlertThreshold: !Ref CostAlertThreshold
-      Tags:
-        - Key: Name
-          Value: !Sub '${ProjectName}-${Environment}-cloudwatch-stack'
+  # 5. CloudWatch Stack (DISABLED - causes conflicts with EKS auto-created log groups)
+  # CloudWatchStack:
+  #   Type: AWS::CloudFormation::Stack
+  #   DependsOn: EKSStack
+  #   Properties:
+  #     TemplateURL: !If
+  #       - UseS3Templates
+  #       - !Sub 'https://${TemplatesBucketName}.s3.${AWS::Region}.amazonaws.com/cloudwatch.yaml'
+  #       - 'file://./templates/cloudwatch.yaml'
+  #     Parameters:
+  #       ProjectName: !Ref ProjectName
+  #       Environment: !Ref Environment
+  #       EKSStackName: !GetAtt EKSStack.Outputs.StackName
+  #       LogRetentionDays: !Ref LogRetentionDays
+  #       CostAlertThreshold: !Ref CostAlertThreshold
+  #     Tags:
+  #       - Key: Name
+  #         Value: !Sub '${ProjectName}-${Environment}-cloudwatch-stack'
 
 Outputs:
   # VPC Outputs
@@ -194,10 +194,10 @@ Outputs:
     Description: S3 Bucket Name
     Value: !GetAtt S3Stack.Outputs.BucketName
 
-  # CloudWatch Outputs
-  DashboardUrl:
-    Description: CloudWatch Dashboard URL
-    Value: !GetAtt CloudWatchStack.Outputs.DashboardUrl
+  # CloudWatch Outputs (DISABLED)
+  # DashboardUrl:
+  #   Description: CloudWatch Dashboard URL
+  #   Value: !GetAtt CloudWatchStack.Outputs.DashboardUrl
 
   # Quick Start Guide
   QuickStartCommands:
@@ -223,4 +223,4 @@ Outputs:
       ./deploy.sh
 
       # 6. Get ALB URL
-      kubectl get ingress -n prod
+      kubectl get ingress -n demo

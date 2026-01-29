@@ -1,58 +1,72 @@
 #!/bin/bash
+# Install AWS Load Balancer Controller for EKS
+
 set -e
 
-# Colors
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-NC='\033[0m'
+echo "=== Installing AWS Load Balancer Controller ==="
 
-echo -e "${YELLOW}🔧 Installing AWS Load Balancer Controller...${NC}"
-echo ""
+# Variables
+CLUSTER_NAME="knowledgeweaver-production"
+REGION="ap-southeast-2"
+AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 
-# Get cluster name and region
-CLUSTER_NAME=$(kubectl config current-context | cut -d'/' -f2 | cut -d'.' -f1)
-REGION=${AWS_REGION:-ap-southeast-2}
+# 1. Create IAM OIDC provider (if not exists)
+echo "1. Checking OIDC provider..."
+eksctl utils associate-iam-oidc-provider \
+    --cluster ${CLUSTER_NAME} \
+    --region ${REGION} \
+    --approve || echo "OIDC provider already exists"
 
-echo "Cluster: $CLUSTER_NAME"
-echo "Region: $REGION"
-echo ""
+# 2. Create IAM policy for ALB controller
+echo "2. Creating IAM policy..."
+curl -o iam-policy.json https://raw.githubusercontent.com/kubernetes-sigs/aws-load-balancer-controller/v2.7.0/docs/install/iam_policy.json
 
-# Add Helm repo
-echo -e "${YELLOW}1. Adding eks-charts Helm repository...${NC}"
+aws iam create-policy \
+    --policy-name AWSLoadBalancerControllerIAMPolicy \
+    --policy-document file://iam-policy.json || echo "Policy already exists"
+
+# 3. Create service account with IAM role
+echo "3. Creating service account..."
+eksctl create iamserviceaccount \
+    --cluster=${CLUSTER_NAME} \
+    --region=${REGION} \
+    --namespace=kube-system \
+    --name=aws-load-balancer-controller \
+    --attach-policy-arn=arn:aws:iam::${AWS_ACCOUNT_ID}:policy/AWSLoadBalancerControllerIAMPolicy \
+    --override-existing-serviceaccounts \
+    --approve
+
+# 4. Install cert-manager (required by ALB controller)
+echo "4. Installing cert-manager..."
+kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.13.0/cert-manager.yaml
+
+echo "Waiting for cert-manager to be ready..."
+kubectl wait --for=condition=Available --timeout=300s deployment/cert-manager -n cert-manager
+kubectl wait --for=condition=Available --timeout=300s deployment/cert-manager-webhook -n cert-manager
+
+# 5. Install AWS Load Balancer Controller using Helm
+echo "5. Installing AWS Load Balancer Controller..."
 helm repo add eks https://aws.github.io/eks-charts
 helm repo update
 
-# Create service account
-echo -e "${YELLOW}2. Creating service account...${NC}"
-kubectl create serviceaccount aws-load-balancer-controller -n kube-system --dry-run=client -o yaml | kubectl apply -f -
-
-# Get ALB controller role ARN from Terraform output
-ALB_ROLE_ARN=$(cd ../../../terraform && terraform output -raw eks_alb_controller_role_arn 2>/dev/null || echo "")
-
-if [ -z "$ALB_ROLE_ARN" ]; then
-  echo -e "${YELLOW}⚠️  Could not get ALB role ARN from Terraform. You'll need to annotate the service account manually.${NC}"
-else
-  echo -e "${YELLOW}3. Annotating service account with IAM role...${NC}"
-  kubectl annotate serviceaccount -n kube-system aws-load-balancer-controller \
-    eks.amazonaws.com/role-arn=$ALB_ROLE_ARN --overwrite
-fi
-
-# Install ALB controller using Helm
-echo -e "${YELLOW}4. Installing AWS Load Balancer Controller via Helm...${NC}"
-helm upgrade --install aws-load-balancer-controller eks/aws-load-balancer-controller \
-  -n kube-system \
-  --set clusterName=$CLUSTER_NAME \
-  --set serviceAccount.create=false \
-  --set serviceAccount.name=aws-load-balancer-controller \
-  --set region=$REGION \
-  --set vpcId=$(cd ../../../terraform && terraform output -raw vpc_id 2>/dev/null || echo "")
+helm install aws-load-balancer-controller eks/aws-load-balancer-controller \
+    -n kube-system \
+    --set clusterName=${CLUSTER_NAME} \
+    --set serviceAccount.create=false \
+    --set serviceAccount.name=aws-load-balancer-controller \
+    --set region=${REGION} \
+    --set vpcId=$(aws eks describe-cluster --name ${CLUSTER_NAME} --region ${REGION} --query "cluster.resourcesVpcConfig.vpcId" --output text)
 
 echo ""
-echo -e "${YELLOW}5. Waiting for controller to be ready...${NC}"
-kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=aws-load-balancer-controller -n kube-system --timeout=120s
+echo "=== Waiting for ALB controller to be ready... ==="
+kubectl wait --for=condition=Available --timeout=300s deployment/aws-load-balancer-controller -n kube-system
 
 echo ""
-echo -e "${GREEN}✅ AWS Load Balancer Controller installed!${NC}"
+echo "✅ AWS Load Balancer Controller installed successfully!"
 echo ""
-echo "Verify installation:"
-echo "  kubectl get deployment -n kube-system aws-load-balancer-controller"
+echo "Next steps:"
+echo "1. Apply your Ingress: kubectl apply -f deploy/kubernetes/base/ingress.yaml"
+echo "2. Get ALB URL: kubectl get ingress -n demo"
+echo ""
+
+rm -f iam-policy.json

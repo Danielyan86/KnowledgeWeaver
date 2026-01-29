@@ -28,14 +28,14 @@ Shows the core processing pipeline and components of KnowledgeWeaver.
 1. **Input Layer**: Documents (txt/pdf)
 2. **Processing Layer**:
    - Document chunking
-   - LLM entity extraction
+   - LLM entity extraction (Claude CLI / Gemini API)
    - Knowledge merging & normalization
 3. **Storage Layer**:
-   - JSON file storage
-   - ChromaDB vector database
+   - **Neo4j** graph database (knowledge graph storage)
+   - **ChromaDB** vector database (semantic search)
 4. **Service Layer**:
    - FastAPI backend
-   - Hybrid retriever
+   - Hybrid retriever (KG + RAG)
    - QA engine
 5. **Frontend Layer**:
    - D3.js knowledge graph visualization
@@ -45,40 +45,43 @@ Shows the core processing pipeline and components of KnowledgeWeaver.
 
 ## AWS Cloud Architecture
 
-Shows the production deployment architecture on AWS.
+Shows the **demo/interview deployment** architecture on AWS EKS.
 
 ### Interactive Diagrams (Recommended)
 
 - **[AWS Architecture - English](aws-architecture-diagram-en.html)** (Open in browser)
   - Interactive D3.js visualization
   - Hover effects and visual feedback
-  - Shows: VPC, subnets, ECS Fargate, EC2, AWS managed services
+  - Shows: VPC, subnets, EKS cluster, pods, AWS managed services
 
 - **[AWS Architecture - Chinese](aws-architecture-diagram-cn.html)** (Open in browser)
   - 交互式 D3.js 可视化
   - 悬停效果和视觉反馈
-  - 展示：VPC、子网、ECS Fargate、EC2、AWS 托管服务
+  - 展示：VPC、子网、EKS 集群、Pod、AWS 托管服务
 
 ### Architecture Highlights
 
 #### Network Architecture
 - **VPC (10.0.0.0/16)** with public and private subnets
-- **Public Subnet (10.0.1.0/24)**: ALB, NAT Gateway, Internet Gateway
-- **Private Subnet (10.0.2.0/24)**: ECS Fargate, Neo4j EC2
-- **Multi-AZ deployment** for high availability
+- **Public Subnet (10.0.1.0/24)**: Internet Gateway, ALB, NAT Gateway
+- **Private Subnet (10.0.2.0/24)**: EKS worker nodes and pods
 
-#### Compute Layer
-- **ECS Fargate**: Serverless container platform for FastAPI service
-  - Auto-scaling based on load
-  - Deployed across 2 availability zones
-- **Neo4j EC2 (t3.medium)**: Graph database
-  - Primary in AZ1, Standby in AZ2
-  - Private subnet for security
+#### Compute Layer (EKS Kubernetes)
+- **Namespace**: `demo` (single environment)
+- **API Pod (FastAPI)**: 1 replica (auto-scales 1-3)
+  - Resource limits: 512Mi-1Gi memory, 250m-1000m CPU
+  - Deployed on Worker Node 1
+- **Neo4j Pod**: Graph database (StatefulSet)
+  - Deployed on Worker Node 2
+  - EBS persistent storage
+- **Worker Nodes**: 2x t3.medium instances
+- **Observability** (optional): Phoenix, Langfuse, PostgreSQL pods
 
 #### Storage & Data
 - **S3**: Document storage
 - **ECR**: Docker container registry
-- **RDS PostgreSQL**: Phoenix/Langfuse observability backend
+- **EBS Volumes**: Persistent storage for Neo4j and PostgreSQL
+- **RDS PostgreSQL** (optional): Observability backend
 
 #### Management & Monitoring
 - **CloudWatch**: Logs, metrics, and dashboards
@@ -87,25 +90,48 @@ Shows the production deployment architecture on AWS.
 - **CloudTrail**: Audit logging
 
 #### Security Features
-- ✅ Application in private subnet (no public IP)
-- ✅ ALB in public subnet (only entry point)
+- ✅ Pods in private subnet (no public IP)
+- ✅ IRSA (IAM Roles for Service Accounts) using OIDC
 - ✅ Security groups with least privilege
 - ✅ NAT Gateway for outbound traffic only
 - ✅ Secrets Manager for credential management
 
-### Cost Estimation
+#### Public Access Options
+
+Three ways to access the API:
+
+1. **LoadBalancer Service** (recommended for demo)
+   - AWS NLB automatically provisioned
+   - Public URL: `http://xxx.elb.amazonaws.com`
+   - Cost: ~$20-30/month
+
+2. **Ingress + ALB Controller**
+   - Advanced routing, SSL support
+   - Cost: ~$25-40/month
+
+3. **NodePort**
+   - Direct node access
+   - Cost: $0 (testing only)
+
+See [Public Access Guide](../../deploy/kubernetes/PUBLIC_ACCESS_GUIDE.md) for details.
+
+### Cost Estimation (Demo Environment)
 
 | Service | Monthly Cost |
 |---------|--------------|
-| ECS Fargate | ~$30-50 |
-| ALB | ~$20 |
-| Neo4j EC2 (t3.medium) | ~$30 |
-| S3 | ~$1-5 |
-| CloudWatch + Phoenix | ~$10-20 |
-| Secrets Manager | ~$1-2 |
-| **Total** | **~$92-128** |
+| EKS Control Plane | $73 |
+| Worker Nodes (2x t3.medium) | ~$60 |
+| NLB (LoadBalancer) | ~$20 |
+| EBS Volumes (50GB) | ~$5 |
+| S3 + ECR | ~$5 |
+| CloudWatch | ~$10 |
+| **Total** | **~$173** |
 
-*Note: Costs can be reduced by ~30% using Reserved Instances*
+**Cost Optimization:**
+- Stop cluster when not in use: Save ~$60/month
+- Use Spot instances: Save ~40% on worker nodes
+- Use t3.small instead of t3.medium: Save ~$30/month
+- **Demo cost (8 hours/day)**: ~$60-80/month
 
 ---
 
@@ -124,12 +150,25 @@ Shows the production deployment architecture on AWS.
 
 ## Related Documentation
 
+### Deployment
 - [AWS Deployment Guide](../deployment/AWS_DEPLOYMENT_GUIDE.md) - Complete deployment instructions
+- [EKS Deployment Guide](../deployment/AWS_EKS_DEPLOYMENT.md) - EKS cluster setup
+- [Public Access Guide](../../deploy/kubernetes/PUBLIC_ACCESS_GUIDE.md) - How to access via public IP
+- [Kubernetes README](../../deploy/kubernetes/README.md) - Quick deploy guide
+- [EKS IRSA Fix](../deployment/EKS_IRSA_FIX.md) - OIDC and IAM Roles for Service Accounts
+
+### Database & Storage
+- [Neo4j Guide](../database/NEO4J_GUIDE.md) - Graph database setup and algorithms
+
+### Development
 - [Project Structure](../development/PROJECT_STRUCTURE.md) - Code organization
-- [Neo4j Guide](../database/NEO4J_GUIDE.md) - Graph database setup
-- [Observability Guide](../observability/PHOENIX_INTEGRATION.md) - Monitoring and tracing
+- [Configuration Review](../development/CONFIGURATION_REVIEW.md) - Environment setup
+
+### Observability
+- [Phoenix Integration](../observability/PHOENIX_INTEGRATION.md) - Monitoring and tracing
+- [Langfuse Guide](../observability/LANGFUSE_GUIDE.md) - LLM observability
 
 ---
 
-**Last Updated**: 2026-01-28
+**Last Updated**: 2026-01-29
 **Maintainer**: Sheldon
