@@ -2,7 +2,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: knowledgeweaver-config
-  namespace: prod
+  namespace: demo
 data:
   # Application settings
   HOST: "0.0.0.0"

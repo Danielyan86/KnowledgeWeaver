@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: neo4j
-  namespace: prod
+  namespace: demo
   labels:
     app: neo4j
     component: database

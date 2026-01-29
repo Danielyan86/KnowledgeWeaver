@@ -181,15 +181,20 @@ Resources:
                   "Action": "sts:AssumeRoleWithWebIdentity",
                   "Condition": {
                     "StringEquals": {
-                      "${OIDCUrl}:sub": "system:serviceaccount:kube-system:ebs-csi-controller-sa",
-                      "${OIDCUrl}:aud": "sts.amazonaws.com"
+                      "${OIDCHostname}:sub": "system:serviceaccount:kube-system:ebs-csi-controller-sa",
+                      "${OIDCHostname}:aud": "sts.amazonaws.com"
                     }
                   }
                 }
               ]
             }
           - OIDCProviderArn: !GetAtt OIDCProvider.Arn
-            OIDCUrl: !GetAtt EKSCluster.OpenIdConnectIssuerUrl
+            OIDCHostname:
+              Fn::Select:
+                - 1
+                - Fn::Split:
+                    - "//"
+                    - !GetAtt EKSCluster.OpenIdConnectIssuerUrl
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy
       Tags:
@@ -278,3 +283,7 @@ Outputs:
   ConfigureKubectl:
     Description: Command to configure kubectl
     Value: !Sub 'aws eks update-kubeconfig --region ${AWS::Region} --name ${EKSCluster}'
+
+  StackName:
+    Description: Stack name for cross-stack references
+    Value: !Ref AWS::StackName

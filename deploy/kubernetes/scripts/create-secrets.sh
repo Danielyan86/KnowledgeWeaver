@@ -17,9 +17,9 @@ if [ ! -f "../../../.env" ]; then
   exit 1
 fi
 
-# Load .env file
+# Load .env file (filter out comments and invalid lines)
 set -a
-source ../../../.env
+source <(grep -E '^[A-Z_]+=.*' ../../../.env)
 set +a
 
 # Check if kubectl is configured

@@ -2,7 +2,7 @@ apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: phoenix-pvc
-  namespace: prod
+  namespace: demo
   labels:
     app: phoenix
     component: observability

@@ -2,7 +2,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: neo4j
-  namespace: prod
+  namespace: demo
   labels:
     app: neo4j
     component: database

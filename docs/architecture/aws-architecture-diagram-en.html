@@ -139,8 +139,8 @@
     <div id="diagram"></div>
 
     <script>
-        const width = 1500;
-        const height = 900;
+        const width = 1600;
+        const height = 850;
 
         const svg = d3.select('#diagram')
             .append('svg')
@@ -196,6 +196,7 @@
             // Management
             cloudwatch: '#FF4F8B',
             secrets: '#DD344C',
+            cloudtrail: '#DD344C',
 
             // Application
             api: '#FF6A88',
@@ -211,19 +212,19 @@
         // Group definitions
         const groups = [
             // VPC
-            {id: 'vpc', x: 30, y: 100, width: 1000, height: 750, label: 'VPC (10.0.0.0/16)', class: 'vpc'},
+            {id: 'vpc', x: 40, y: 100, width: 1050, height: 700, label: 'VPC (10.0.0.0/16)', class: 'vpc'},
 
             // Public Subnet
-            {id: 'public', x: 50, y: 150, width: 350, height: 200, label: 'PUBLIC SUBNET', class: 'subnet'},
+            {id: 'public', x: 60, y: 140, width: 320, height: 240, label: 'PUBLIC SUBNET (10.0.1.0/24)', class: 'subnet'},
 
             // Private Subnet
-            {id: 'private', x: 50, y: 380, width: 960, height: 440, label: 'PRIVATE SUBNET', class: 'subnet'},
+            {id: 'private', x: 60, y: 400, width: 1010, height: 380, label: 'PRIVATE SUBNET (10.0.2.0/24)', class: 'subnet'},
 
             // EKS Cluster
-            {id: 'eks-cluster', x: 70, y: 420, width: 920, height: 370, label: 'EKS CLUSTER (Kubernetes 1.28)', class: 'cluster'},
+            {id: 'eks-cluster', x: 80, y: 440, width: 970, height: 320, label: 'EKS CLUSTER (Kubernetes 1.28)', class: 'cluster'},
 
             // AWS Managed Services
-            {id: 'services', x: 1060, y: 100, width: 390, height: 750, label: 'AWS MANAGED SERVICES', class: 'services'}
+            {id: 'services', x: 1120, y: 100, width: 440, height: 700, label: 'AWS MANAGED SERVICES', class: 'services'}
         ];
 
         // Draw groups
@@ -246,38 +247,34 @@
 
         // Node definitions
         const nodes = [
-            // Internet
-            {id: 'internet', x: 120, y: 800, width: 140, height: 60, label: 'Internet\nUsers', color: colors.user, shape: 'hexagon'},
-            {id: 'igw', x: 150, y: 110, width: 80, height: 50, label: 'Internet\nGateway', color: colors.igw},
+            // Internet Gateway (outside VPC)
+            {id: 'igw', x: 140, y: 40, width: 100, height: 50, label: 'Internet\nGateway', color: colors.igw},
 
             // Public Subnet Components
-            {id: 'alb', x: 180, y: 240, width: 140, height: 60, label: 'Application\nLoad Balancer', color: colors.alb},
-            {id: 'nat', x: 200, y: 320, width: 100, height: 50, label: 'NAT\nGateway', color: colors.nat},
+            {id: 'alb', x: 120, y: 190, width: 160, height: 65, label: 'Application Load\nBalancer (ALB)', color: colors.alb},
+            {id: 'nat', x: 140, y: 290, width: 120, height: 55, label: 'NAT Gateway', color: colors.nat},
 
-            // EKS Control Plane (logical)
-            {id: 'eks-control', x: 470, y: 240, width: 180, height: 60, label: 'EKS Control Plane\n(AWS Managed)', color: colors.eks},
-
-            // Worker Nodes
-            {id: 'node1', x: 120, y: 500, width: 180, height: 70, label: 'Worker Node 1\nt3.medium', color: colors.node},
-            {id: 'node2', x: 320, y: 500, width: 180, height: 70, label: 'Worker Node 2\nt3.medium', color: colors.node},
+            // Worker Nodes (in EKS Cluster)
+            {id: 'node1', x: 100, y: 490, width: 200, height: 80, label: 'Worker Node 1\nt3.medium', color: colors.node},
+            {id: 'node2', x: 330, y: 490, width: 200, height: 80, label: 'Worker Node 2\nt3.medium', color: colors.node},
 
             // Pods on Node 1
-            {id: 'api-pod1', x: 175, y: 600, width: 80, height: 60, label: 'API Pod\n(FastAPI)', color: colors.api},
+            {id: 'api-pod1', x: 160, y: 610, width: 90, height: 70, label: 'API Pod\n(FastAPI)', color: colors.api},
 
             // Pods on Node 2
-            {id: 'neo4j-pod', x: 330, y: 600, width: 80, height: 60, label: 'Neo4j\nPod', color: colors.neo4j, shape: 'cylinder'},
-            {id: 'phoenix-pod', x: 420, y: 600, width: 80, height: 60, label: 'Phoenix\nPod', color: colors.phoenix},
+            {id: 'neo4j-pod', x: 350, y: 610, width: 80, height: 70, label: 'Neo4j\nPod', color: colors.neo4j, shape: 'cylinder'},
+            {id: 'phoenix-pod', x: 450, y: 610, width: 80, height: 70, label: 'Phoenix\nPod', color: colors.phoenix},
 
-            // Storage
-            {id: 'postgres-pod', x: 540, y: 600, width: 90, height: 60, label: 'PostgreSQL\nPod', color: colors.postgres, shape: 'cylinder'},
-            {id: 'ebs', x: 700, y: 600, width: 120, height: 60, label: 'EBS Volumes\n(Persistent)', color: colors.ebs, shape: 'cylinder'},
+            // Storage Pods
+            {id: 'postgres-pod', x: 570, y: 610, width: 100, height: 70, label: 'PostgreSQL\nPod', color: colors.postgres, shape: 'cylinder'},
+            {id: 'ebs', x: 750, y: 610, width: 140, height: 70, label: 'EBS Volumes\n(Persistent)', color: colors.ebs, shape: 'cylinder'},
 
-            // AWS Managed Services
-            {id: 's3', x: 1110, y: 200, width: 150, height: 60, label: 'S3 Bucket\n(Documents)', color: colors.s3, shape: 'cylinder'},
-            {id: 'ecr', x: 1110, y: 280, width: 150, height: 60, label: 'ECR\n(Container Images)', color: colors.eks, shape: 'cylinder'},
-            {id: 'cloudwatch', x: 1110, y: 400, width: 150, height: 60, label: 'CloudWatch\nLogs & Metrics', color: colors.cloudwatch},
-            {id: 'secrets', x: 1290, y: 400, width: 150, height: 60, label: 'Secrets\nManager', color: colors.secrets},
-            {id: 'cloudtrail', x: 1110, y: 480, width: 150, height: 60, label: 'CloudTrail\n(Audit Logs)', color: colors.secrets}
+            // AWS Managed Services (right side)
+            {id: 's3', x: 1160, y: 150, width: 170, height: 70, label: 'S3 Bucket\n(Documents)', color: colors.s3, shape: 'cylinder'},
+            {id: 'ecr', x: 1360, y: 150, width: 160, height: 70, label: 'ECR\n(Images)', color: colors.eks, shape: 'cylinder'},
+            {id: 'cloudwatch', x: 1160, y: 320, width: 170, height: 70, label: 'CloudWatch\nLogs & Metrics', color: colors.cloudwatch},
+            {id: 'secrets', x: 1360, y: 320, width: 160, height: 70, label: 'Secrets\nManager', color: colors.secrets},
+            {id: 'cloudtrail', x: 1160, y: 490, width: 170, height: 70, label: 'CloudTrail\n(Audit Logs)', color: colors.cloudtrail}
         ];
 
         // Draw nodes
@@ -373,13 +370,8 @@
         // Links
         const links = [
             // Internet flow
-            {from: 'internet', to: 'igw', type: 'solid'},
             {from: 'igw', to: 'alb', type: 'solid'},
-            {from: 'alb', to: 'eks-control', type: 'solid'},
-
-            // EKS Control Plane to Nodes
-            {from: 'eks-control', to: 'node1', type: 'dashed'},
-            {from: 'eks-control', to: 'node2', type: 'dashed'},
+            {from: 'alb', to: 'api-pod1', type: 'solid'},
 
             // Nodes to Pods
             {from: 'node1', to: 'api-pod1', type: 'solid'},

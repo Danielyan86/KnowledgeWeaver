@@ -2,7 +2,7 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: knowledgeweaver-ingress
-  namespace: prod
+  namespace: demo
   annotations:
     # AWS ALB Controller annotations
     kubernetes.io/ingress.class: alb
