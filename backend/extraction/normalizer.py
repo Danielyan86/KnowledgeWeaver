@@ -3,15 +3,23 @@ Knowledge Graph Normalizer
 知识图谱规范化模块
 
 核心功能：
-1. 节点名称规范化（缩短、去重、合并）
+1. 节点名称规范化（缩短、去重、合并）- 支持中英文
 2. 节点类型标准化
-3. 关系词规范化（映射到标准关系词表）
+3. 关系词规范化（映射到标准关系词表）- 支持中英文
 4. 属性提取和分离
 """
 
 import re
 from typing import Dict, List, Set, Tuple, Optional
 from collections import defaultdict
+from ..core.language_utils import (
+    detect_language,
+    MAX_NAME_LENGTH_ZH,
+    MAX_NAME_LENGTH_EN,
+    MAX_NAME_WORDS_EN,
+    is_english_relation,
+    normalize_english_relation
+)
 
 
 class KnowledgeGraphNormalizer:
@@ -148,45 +156,53 @@ class KnowledgeGraphNormalizer:
     
     def normalize_node_name(self, name: str) -> str:
         """
-        规范化节点名称
+        规范化节点名称（支持中英文）
         规则：
         1. 移除多余空格和标点
         2. 截断过长名称（保留核心词）
+           - 中文：≤10 字符
+           - 英文：≤5 单词 或 ≤30 字符（取较小值）
         3. 统一格式（去除书名号等）
-        
+
         Args:
             name: 原始节点名称
-            
+
         Returns:
             规范化后的节点名称
         """
         if not name or not isinstance(name, str):
             return name
-        
+
         normalized = name.strip()
-        
+
         # 移除书名号，但保留内容
         normalized = re.sub(r'[《》]', '', normalized)
-        
+
         # 移除引号
         normalized = re.sub(r'["""'']', '', normalized)
-        
+
         # 移除多余空格
         normalized = re.sub(r'\s+', ' ', normalized).strip()
-        
-        # 如果太长，尝试提取核心词
-        if len(normalized) > self.max_node_name_length:
-            # 中文：取前N个字
-            if re.search(r'[\u4e00-\u9fa5]', normalized):
-                normalized = normalized[:self.max_node_name_length]
-            else:
-                # 英文：取前几个词
-                words = normalized.split()
-                if len(words) > 1:
-                    normalized = ' '.join(words[:2])
-                else:
-                    normalized = normalized[:self.max_node_name_length]
-        
+
+        # 检测语言并应用对应的截断规则
+        lang = detect_language(normalized)
+
+        if lang == "zh":
+            # 中文：截断到最大字符数
+            if len(normalized) > MAX_NAME_LENGTH_ZH:
+                normalized = normalized[:MAX_NAME_LENGTH_ZH]
+        else:
+            # 英文：同时检查单词数和字符数
+            words = normalized.split()
+
+            # 如果单词数超过限制，取前 N 个单词
+            if len(words) > MAX_NAME_WORDS_EN:
+                normalized = ' '.join(words[:MAX_NAME_WORDS_EN])
+
+            # 如果字符数仍然超过限制，截断
+            if len(normalized) > MAX_NAME_LENGTH_EN:
+                normalized = normalized[:MAX_NAME_LENGTH_EN]
+
         return normalized
     
     def infer_node_type(self, node: Dict) -> str:
@@ -255,35 +271,48 @@ class KnowledgeGraphNormalizer:
     
     def normalize_relation(self, relation: str) -> str:
         """
-        规范化关系名称
+        规范化关系名称（支持中英文）
         映射到标准关系词表
-        
+
         Args:
             relation: 原始关系名称
-            
+
         Returns:
             规范化后的关系名称
         """
         if not relation or not isinstance(relation, str):
             return '相关'
-        
+
         normalized = relation.strip()
-        
-        # 直接匹配
-        if normalized in self.standard_relations:
-            return self.standard_relations[normalized]
-        
-        # 模糊匹配（包含关系）
-        for key, value in self.standard_relations.items():
-            if key in normalized or normalized in key:
-                return value
-        
-        # 如果太长，截断
-        if len(normalized) > self.max_relation_length:
-            return normalized[:self.max_relation_length]
-        
-        # 默认返回原值（如果很短）
-        return normalized if len(normalized) <= self.max_relation_length else '相关'
+
+        # 检测语言
+        lang = detect_language(normalized)
+
+        if lang == "zh":
+            # 中文关系词验证
+            # 直接匹配
+            if normalized in self.standard_relations:
+                return self.standard_relations[normalized]
+
+            # 模糊匹配（包含关系）
+            for key, value in self.standard_relations.items():
+                if key in normalized or normalized in key:
+                    return value
+
+            # 如果太长，截断
+            if len(normalized) > self.max_relation_length:
+                return normalized[:self.max_relation_length]
+
+            # 默认返回原值（如果很短）
+            return normalized if len(normalized) <= self.max_relation_length else '相关'
+
+        else:
+            # 英文关系词验证
+            if is_english_relation(normalized):
+                return normalize_english_relation(normalized)
+
+            # 如果不在标准词表中，返回通用关系
+            return "relates"
     
     def extract_properties(self, node: Dict) -> Tuple[str, Dict]:
         """

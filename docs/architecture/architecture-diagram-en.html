@@ -210,7 +210,8 @@
             {id: 'chat', x: 250, y: 570, width: 100, height: 60, label: 'Chat UI', color: colors.chat},
 
             // External
-            {id: 'llmapi', x: 950, y: 570, width: 200, height: 60, label: 'space.ai-builders.com', color: colors.external, shape: 'hexagon'}
+            {id: 'llmapi', x: 820, y: 570, width: 200, height: 60, label: 'space.ai-builders.com', color: colors.external, shape: 'hexagon'},
+            {id: 'gemini', x: 1090, y: 570, width: 200, height: 60, label: 'Gemini API', color: colors.external, shape: 'hexagon'}
         ];
 
         // Draw nodes
@@ -331,6 +332,7 @@
 
             // External API calls (dashed)
             {from: 'extract', to: 'llmapi', type: 'dashed'},
+            {from: 'extract', to: 'gemini', type: 'dashed'},
             {from: 'embedding', to: 'llmapi', type: 'dashed'},
             {from: 'qa', to: 'llmapi', type: 'dashed'}
         ];

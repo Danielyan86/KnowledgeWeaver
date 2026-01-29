@@ -206,52 +206,5 @@ def get_relation_extraction_prompt(text: str, entities: list) -> str:
     return RELATION_EXTRACTION_PROMPT.format(text=text, entities=entities_str)
 
 
-def validate_entity(entity: dict) -> bool:
-    """
-    验证实体是否符合规范
-    
-    Args:
-        entity: 实体字典，包含 name 和 type
-        
-    Returns:
-        是否符合规范
-    """
-    if not entity.get('name') or not entity.get('type'):
-        return False
-    
-    name = entity['name']
-    entity_type = entity['type']
-    
-    # 检查名称长度
-    if len(name) > 10:
-        return False
-    
-    # 检查类型是否有效
-    if entity_type not in NODE_TYPES:
-        return False
-    
-    return True
-
-
-def validate_relation(relation: dict) -> bool:
-    """
-    验证关系是否符合规范
-    
-    Args:
-        relation: 关系字典，包含 source, target, relation
-        
-    Returns:
-        是否符合规范
-    """
-    if not all(key in relation for key in ['source', 'target', 'relation']):
-        return False
-    
-    relation_word = relation['relation']
-    
-    # 检查关系词是否在标准词表中
-    if relation_word not in STANDARD_RELATIONS:
-        # 允许部分匹配（如"推荐标的"匹配"推荐"）
-        if not any(rel in relation_word for rel in STANDARD_RELATIONS):
-            return False
-    
-    return True
+# Note: validate_entity() and validate_relation() have been removed as they were never called.
+# Validation is now handled by entity_filter.py and normalizer.py with language-aware logic.

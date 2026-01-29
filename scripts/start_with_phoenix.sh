@@ -4,4 +4,4 @@ echo ""
 echo "📊 Phoenix UI: http://localhost:6006"
 echo "🌐 API Server: http://localhost:9621"
 echo ""
-cd backend && python server.py
+python -m backend.server

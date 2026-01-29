@@ -4,13 +4,14 @@ Entity Filter
 """
 
 from typing import Dict, List, Set
+from ..core.language_utils import detect_language, STOP_WORDS_EN
 
 
 class EntityFilter:
     """实体过滤器"""
 
     def __init__(self):
-        # 停用实体（太通用或无意义）
+        # 停用实体（太通用或无意义）- 中文
         self.stop_entities = {
             # 单字通用词
             "人", "事", "物", "时", "地", "年", "月", "日",
@@ -30,6 +31,9 @@ class EntityFilter:
             "今天", "明天", "昨天"
         }
 
+        # 停用实体 - 英文
+        self.stop_entities_en = STOP_WORDS_EN
+
         # 低质量实体模式
         self.bad_patterns = [
             lambda x: len(x) == 1,  # 单字实体（通常太模糊）
@@ -40,7 +44,7 @@ class EntityFilter:
 
     def should_filter(self, entity_name: str) -> bool:
         """
-        判断实体是否应该被过滤
+        判断实体是否应该被过滤（支持中英文）
 
         Args:
             entity_name: 实体名称
@@ -54,9 +58,17 @@ class EntityFilter:
 
         entity_name = entity_name.strip()
 
-        # 停用词
-        if entity_name in self.stop_entities:
-            return True
+        # 检测语言并应用对应的停用词表
+        lang = detect_language(entity_name)
+
+        if lang == "zh":
+            # 中文停用词
+            if entity_name in self.stop_entities:
+                return True
+        else:
+            # 英文停用词（小写匹配）
+            if entity_name.lower() in self.stop_entities_en:
+                return True
 
         # 检查模式
         for pattern in self.bad_patterns:

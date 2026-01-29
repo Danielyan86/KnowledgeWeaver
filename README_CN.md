@@ -89,16 +89,327 @@ NEO4J_PASSWORD=your_neo4j_password
 
 ### 启动服务
 
+**方式 1: 快速启动（推荐开发环境）**
 ```bash
-cd backend
-python server.py
+./scripts/start_dev.sh
 ```
+
+**方式 2: 完整启动（推荐首次运行）**
+```bash
+./scripts/start.sh
+```
+
+**方式 3: 手动启动**
+```bash
+python -m backend.server
+```
+
+**其他命令:**
+```bash
+# 查看服务状态
+./scripts/status.sh
+
+# 停止服务
+./scripts/stop.sh
+
+# 重启服务
+./scripts/restart.sh
+```
+
+详细文档请参考 [scripts/README.md](scripts/README.md)。
+
+### 访问服务
+
+- **前端界面**: http://localhost:9621
+- **API 文档**: http://localhost:9621/docs
+- **健康检查**: http://localhost:9621/health
 
 ### 处理文档
 
 ```bash
 python backend/process_book.py
 ```
+
+## 使用指南
+
+### 启动本地服务
+
+#### 1. 启动 Neo4j 数据库
+
+**方式 A: Docker（推荐）**
+
+```bash
+docker run -d \
+  --name neo4j \
+  -p 7474:7474 -p 7687:7687 \
+  -e NEO4J_AUTH=neo4j/your_password \
+  -v $(pwd)/data/neo4j/data:/data \
+  neo4j:latest
+```
+
+访问 Neo4j 浏览器：http://localhost:7474
+
+**方式 B: 原生安装**
+
+从官网下载并安装：https://neo4j.com/download/
+
+#### 2. 启动 FastAPI 后端
+
+```bash
+python -m backend.server
+```
+
+API 将在以下地址启动：http://localhost:9621
+
+- API 文档：http://localhost:9621/docs
+- 健康检查：http://localhost:9621/health
+
+#### 3. （可选）启动可观测性工具
+
+**方式 A: Langfuse - 生产环境监控**
+
+Langfuse 提供详细的 LLM 调用追踪、成本分析和生产监控。
+
+```bash
+# 1. 在 .env 中配置环境变量
+LANGFUSE_ENABLED=true
+LANGFUSE_PUBLIC_KEY=pk-lf-xxx
+LANGFUSE_SECRET_KEY=sk-lf-xxx
+LANGFUSE_HOST=https://cloud.langfuse.com  # 或自托管 URL
+
+# 2. 安装 Langfuse
+pip install langfuse>=2.0.0
+
+# 3. 重启后端服务
+python -m backend.server
+```
+
+访问 https://cloud.langfuse.com 查看追踪数据。
+
+自托管部署请参考：[Langfuse 完整指南](docs/observability/LANGFUSE_GUIDE.md)
+
+**方式 B: Phoenix - 开发和评估**
+
+Phoenix 提供零代码追踪、实验管理和提示词优化。
+
+```bash
+# 1. 启动 Phoenix 服务器（Docker）
+docker run -d \
+  --name phoenix \
+  -p 6006:6006 \
+  -p 4317:4317 \
+  -v $(pwd)/data/phoenix:/data \
+  arizephoenix/phoenix:latest
+
+# 2. 在 .env 中配置环境变量
+PHOENIX_ENABLED=true
+PHOENIX_ENDPOINT=http://localhost:6006/v1/traces
+
+# 3. 安装 Phoenix 包
+pip install arize-phoenix arize-phoenix-otel openinference-instrumentation-openai
+
+# 4. 重启后端服务
+python -m backend.server
+```
+
+访问 Phoenix 界面：http://localhost:6006
+
+详细设置和对比请参考：[Phoenix 集成指南](docs/observability/PHOENIX_INTEGRATION.md)
+
+### 使用系统
+
+#### 上传和处理文档
+
+**通过 API（异步 - 推荐）**
+
+```bash
+curl -X POST "http://localhost:9621/documents/upload-async" \
+  -F "file=@your_document.txt"
+
+# 响应：{"doc_id": "abc123", "status": "processing"}
+
+# 查询进度
+curl "http://localhost:9621/documents/progress/abc123"
+```
+
+**通过 API（同步）**
+
+```bash
+curl -X POST "http://localhost:9621/documents/upload" \
+  -F "file=@your_document.pdf"
+```
+
+**通过命令行**
+
+```bash
+python backend/extraction/async_extractor.py path/to/document.txt
+```
+
+#### 查询知识图谱
+
+**提问**
+
+```bash
+curl -X POST "http://localhost:9621/qa" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "question": "什么是知识图谱？",
+    "mode": "auto",
+    "n_hops": 2,
+    "top_k": 5
+  }'
+```
+
+查询模式：
+- `auto`：自动选择最佳策略
+- `kg_only`：仅使用知识图谱
+- `rag_only`：仅使用向量检索
+- `hybrid`：结合 KG 和 RAG
+- `kg_first`：优先 KG，回退到 RAG
+- `rag_first`：优先 RAG，回退到 KG
+
+**语义搜索**
+
+```bash
+curl -X POST "http://localhost:9621/search" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "投资策略",
+    "search_type": "all",
+    "top_k": 10
+  }'
+```
+
+搜索类型：
+- `all`：搜索文档片段和实体
+- `chunks`：仅搜索文档片段
+- `entities`：仅搜索实体
+
+#### 可视化知识图谱
+
+**获取完整图谱**
+
+```bash
+curl "http://localhost:9621/graphs"
+```
+
+**获取文档特定图谱**
+
+```bash
+curl "http://localhost:9621/documents/abc123"
+```
+
+**在浏览器中查看**
+
+在浏览器中打开 `frontend/index.html` 与 D3.js 可视化进行交互。
+
+#### 监控和管理
+
+**查看统计信息**
+
+```bash
+# 知识图谱统计
+curl "http://localhost:9621/stats"
+
+# 向量存储统计
+curl "http://localhost:9621/vector-stats"
+```
+
+**列出文档**
+
+```bash
+curl "http://localhost:9621/documents"
+```
+
+**删除文档**
+
+```bash
+curl -X DELETE "http://localhost:9621/documents/abc123"
+```
+
+### 配置参考
+
+编辑 `.env` 文件自定义设置：
+
+```bash
+# === LLM 配置 ===
+LLM_BINDING_HOST=https://space.ai-builders.com/backend/v1
+LLM_BINDING_API_KEY=your_api_key
+LLM_MODEL=deepseek  # 或其他模型
+
+# === Neo4j 配置 ===
+USE_NEO4J=true
+NEO4J_URI=bolt://localhost:7687
+NEO4J_USER=neo4j
+NEO4J_PASSWORD=your_password
+NEO4J_MAX_POOL_SIZE=50
+NEO4J_BATCH_SIZE=500
+
+# === 处理配置 ===
+CONCURRENT_REQUESTS=5  # 并发 LLM 请求数
+MAX_RETRIES=3
+CHUNK_SIZE=800
+CHUNK_OVERLAP_RATIO=0.5
+
+# === 可观测性（可选）===
+# Langfuse
+LANGFUSE_ENABLED=false
+LANGFUSE_PUBLIC_KEY=pk-lf-xxx
+LANGFUSE_SECRET_KEY=sk-lf-xxx
+LANGFUSE_HOST=https://cloud.langfuse.com
+
+# Phoenix
+PHOENIX_ENABLED=false
+PHOENIX_ENDPOINT=http://localhost:6006/v1/traces
+
+# === 服务配置 ===
+HOST=0.0.0.0
+PORT=9621
+```
+
+### 故障排查
+
+**Neo4j 连接失败**
+```bash
+# 检查 Neo4j 是否运行
+docker ps | grep neo4j
+
+# 查看日志
+docker logs neo4j
+
+# 确认 .env 中的凭据与 Neo4j 设置匹配
+```
+
+**API 服务器无法启动**
+```bash
+# 检查端口是否可用
+lsof -i :9621
+
+# 查看日志获取详细错误信息
+python -m backend.server
+```
+
+**文档处理卡住**
+```bash
+# 检查进度
+curl "http://localhost:9621/documents/progress/YOUR_DOC_ID"
+
+# 检查检查点文件
+ls -la data/checkpoints/YOUR_DOC_ID/
+
+# 重新处理（将从检查点继续）
+curl -X POST "http://localhost:9621/documents/upload-async" \
+  -F "file=@same_document.txt"
+```
+
+**LLM API 错误**
+```bash
+# 验证 API 密钥是否正确
+# 检查 LLM_BINDING_HOST 是否可访问
+# 查看速率限制和配额
+```
+
+更多详细指南，请参考[文档索引](docs/README.md)。
 
 ## 项目结构
 
