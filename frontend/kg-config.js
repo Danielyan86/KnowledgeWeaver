@@ -9,42 +9,66 @@ const KG_CONFIG = {
     // 节点类型定义（用于分类和颜色映射）
     NODE_TYPES: {
         'Person': {
-            label: '人物',
+            label: {
+                zh: '人物',
+                en: 'Person'
+            },
             color: '#FF6B6B',
             icon: '👤'
         },
         'Book': {
-            label: '书籍',
+            label: {
+                zh: '书籍',
+                en: 'Book'
+            },
             color: '#4ECDC4',
             icon: '📚'
         },
         'Concept': {
-            label: '概念',
+            label: {
+                zh: '概念',
+                en: 'Concept'
+            },
             color: '#45B7D1',
             icon: '💡'
         },
         'Strategy': {
-            label: '策略',
+            label: {
+                zh: '策略',
+                en: 'Strategy'
+            },
             color: '#96CEB4',
             icon: '📊'
         },
         'Metric': {
-            label: '指标',
+            label: {
+                zh: '指标',
+                en: 'Metric'
+            },
             color: '#FFEAA7',
             icon: '📈'
         },
         'Example': {
-            label: '示例',
+            label: {
+                zh: '示例',
+                en: 'Example'
+            },
             color: '#DDA0DD',
             icon: '💬'
         },
         'Group': {
-            label: '群体',
+            label: {
+                zh: '群体',
+                en: 'Group'
+            },
             color: '#98D8C8',
             icon: '👥'
         },
         'Entity': {
-            label: '实体',
+            label: {
+                zh: '实体',
+                en: 'Entity'
+            },
             color: '#95A5A6',
             icon: '🔷'
         }

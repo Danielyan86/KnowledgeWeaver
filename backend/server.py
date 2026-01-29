@@ -606,17 +606,29 @@ async def get_document_progress(doc_id: str):
 
 # Serve specific static files before mounting catch-all
 if FRONTEND_DIR.exists():
-    # Serve JavaScript files
+    # Serve JavaScript files (support both /file.js and /static/file.js for browser cache compatibility)
     @app.get("/kg-config.js")
     async def serve_kg_config():
+        return FileResponse(FRONTEND_DIR / "kg-config.js", media_type="application/javascript")
+
+    @app.get("/static/kg-config.js")
+    async def serve_kg_config_static():
         return FileResponse(FRONTEND_DIR / "kg-config.js", media_type="application/javascript")
 
     @app.get("/kg-normalizer.js")
     async def serve_kg_normalizer():
         return FileResponse(FRONTEND_DIR / "kg-normalizer.js", media_type="application/javascript")
 
+    @app.get("/static/kg-normalizer.js")
+    async def serve_kg_normalizer_static():
+        return FileResponse(FRONTEND_DIR / "kg-normalizer.js", media_type="application/javascript")
+
     @app.get("/graph.js")
     async def serve_graph():
+        return FileResponse(FRONTEND_DIR / "graph.js", media_type="application/javascript")
+
+    @app.get("/static/graph.js")
+    async def serve_graph_static():
         return FileResponse(FRONTEND_DIR / "graph.js", media_type="application/javascript")
 
     # Serve index.html for root and other paths

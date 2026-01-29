@@ -5,11 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>KnowledgeWeaver Architecture</title>
     <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
         body {
             margin: 0;
             padding: 40px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             display: flex;
             justify-content: center;
@@ -94,9 +95,38 @@
         .arrow.dashed {
             fill: #f093fb;
         }
+
+        /* Download button */
+        .download-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 10px 20px;
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+            transition: all 0.2s;
+            z-index: 1000;
+        }
+
+        .download-btn:hover {
+            background: linear-gradient(135deg, #2563eb, #1d4ed8);
+            box-shadow: 0 6px 16px rgba(59, 130, 246, 0.4);
+            transform: translateY(-2px);
+        }
+
+        .download-btn:active {
+            transform: translateY(0);
+        }
     </style>
 </head>
 <body>
+    <button class="download-btn" onclick="downloadDiagram()">📥 Download PNG</button>
     <div id="diagram"></div>
 
     <script>
@@ -160,8 +190,9 @@
             {id: 'process', x: 230, y: 100, width: 520, height: 200, label: 'PROCESSING'},
             {id: 'storage', x: 780, y: 100, width: 180, height: 200, label: 'STORAGE'},
             {id: 'service', x: 990, y: 100, width: 360, height: 300, label: 'SERVICE'},
-            {id: 'frontend', x: 50, y: 500, width: 680, height: 200, label: 'FRONTEND'},
-            {id: 'external', x: 760, y: 500, width: 590, height: 200, label: 'EXTERNAL API'}
+            {id: 'observability', x: 990, y: 430, width: 360, height: 100, label: 'OBSERVABILITY'},
+            {id: 'frontend', x: 50, y: 500, width: 350, height: 200, label: 'FRONTEND'},
+            {id: 'external', x: 430, y: 500, width: 550, height: 200, label: 'EXTERNAL API'}
         ];
 
         // Draw groups
@@ -197,21 +228,22 @@
             {id: 'neo4j', x: 800, y: 150, width: 100, height: 60, label: 'Neo4j\nGraph DB', color: colors.storage, shape: 'cylinder'},
             {id: 'chroma', x: 800, y: 230, width: 100, height: 60, label: 'ChromaDB\nVector', color: colors.chroma, shape: 'cylinder'},
 
-            // Embedding
-            {id: 'embedding', x: 450, y: 400, width: 100, height: 60, label: 'Embedding', color: colors.embedding},
-
             // Service
             {id: 'api', x: 1030, y: 180, width: 90, height: 60, label: 'FastAPI', color: colors.api},
             {id: 'retriever', x: 1160, y: 230, width: 90, height: 60, label: 'Hybrid\nRetriever', color: colors.retriever},
             {id: 'qa', x: 1160, y: 310, width: 90, height: 60, label: 'QA Engine', color: colors.qa},
 
+            // Observability
+            {id: 'phoenix', x: 1050, y: 460, width: 240, height: 50, label: 'Phoenix (LLM Tracing & Observability)', color: colors.phoenix},
+
             // Frontend
             {id: 'd3graph', x: 100, y: 570, width: 100, height: 60, label: 'D3.js\nForce Graph', color: colors.view},
             {id: 'chat', x: 250, y: 570, width: 100, height: 60, label: 'Chat UI', color: colors.chat},
 
-            // External
-            {id: 'llmapi', x: 820, y: 570, width: 200, height: 60, label: 'space.ai-builders.com', color: colors.external, shape: 'hexagon'},
-            {id: 'gemini', x: 1090, y: 570, width: 200, height: 60, label: 'Gemini API', color: colors.external, shape: 'hexagon'}
+            // External API
+            {id: 'embedding', x: 470, y: 570, width: 110, height: 60, label: 'Embedding', color: colors.embedding, shape: 'hexagon'},
+            {id: 'llmapi', x: 650, y: 570, width: 200, height: 60, label: 'space.ai-builders.com', color: colors.external, shape: 'hexagon'},
+            {id: 'gemini', x: 920, y: 570, width: 200, height: 60, label: 'Gemini API', color: colors.external, shape: 'hexagon'}
         ];
 
         // Draw nodes
@@ -334,7 +366,11 @@
             {from: 'extract', to: 'llmapi', type: 'dashed'},
             {from: 'extract', to: 'gemini', type: 'dashed'},
             {from: 'embedding', to: 'llmapi', type: 'dashed'},
-            {from: 'qa', to: 'llmapi', type: 'dashed'}
+            {from: 'qa', to: 'llmapi', type: 'dashed'},
+
+            // Phoenix observability (monitoring)
+            {from: 'extract', to: 'phoenix', type: 'dashed'},
+            {from: 'qa', to: 'phoenix', type: 'dashed'}
         ];
 
         // Draw links
@@ -376,6 +412,53 @@
                 .attr('d', path.toString())
                 .attr('marker-end', `url(#arrow${link.type === 'dashed' ? '-dashed' : ''})`);
         });
+
+        // Download diagram as PNG
+        async function downloadDiagram() {
+            const button = document.querySelector('.download-btn');
+            const originalText = button.textContent;
+            button.textContent = '⏳ Generating...';
+            button.disabled = true;
+
+            try {
+                button.style.display = 'none';
+                await new Promise(resolve => setTimeout(resolve, 100));
+
+                const diagram = document.querySelector('#diagram');
+                const canvas = await html2canvas(diagram, {
+                    backgroundColor: '#ffffff',
+                    scale: 2,
+                    logging: false,
+                    useCORS: true,
+                    allowTaint: true
+                });
+
+                button.style.display = '';
+
+                canvas.toBlob(blob => {
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'knowledgeweaver-architecture.png';
+                    a.click();
+                    URL.revokeObjectURL(url);
+
+                    button.textContent = '✅ Downloaded!';
+                    setTimeout(() => {
+                        button.textContent = originalText;
+                        button.disabled = false;
+                    }, 2000);
+                });
+            } catch (error) {
+                console.error('Download failed:', error);
+                button.style.display = '';
+                button.textContent = '❌ Failed';
+                setTimeout(() => {
+                    button.textContent = originalText;
+                    button.disabled = false;
+                }, 2000);
+            }
+        }
     </script>
 </body>
 </html>
