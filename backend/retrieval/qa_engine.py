@@ -6,6 +6,7 @@ QA Engine
 - 编排检索流程
 - 构建上下文
 - LLM 生成答案
+- Session 追踪
 """
 
 import os
@@ -14,6 +15,7 @@ from dataclasses import dataclass
 
 from openai import OpenAI
 from dotenv import load_dotenv
+from opentelemetry import trace
 
 from .hybrid_retriever import get_retriever, HybridRetriever
 from .prompts.qa_prompts import (
@@ -22,6 +24,7 @@ from .prompts.qa_prompts import (
     get_hybrid_answer_prompt
 )
 from ..core.observability import get_tracer
+from ..core.phoenix_observability import get_phoenix_tracer
 
 
 load_dotenv()
@@ -159,84 +162,109 @@ class QAEngine:
         Returns:
             QAResponse 对象
         """
-        # 执行检索
-        retrieval_result = self.retriever.retrieve(
-            question=question,
-            mode=mode,
-            n_hops=n_hops,
-            top_k=top_k
-        )
+        # 获取 tracer 和 session 信息
+        phoenix_tracer = get_phoenix_tracer()
+        tracer = trace.get_tracer(__name__)
 
-        entities = retrieval_result["entities"]
-        relations = retrieval_result["relations"]
-        chunks = retrieval_result["chunks"]
-        strategy = retrieval_result["strategy"]
-        query_type = retrieval_result.get("query_type")
+        # 创建主 span 用于追踪整个问答流程
+        with tracer.start_as_current_span("qa_engine.ask") as span:
+            # 添加 session 属性
+            phoenix_tracer.add_session_attributes(span)
 
-        # 根据策略选择 prompt
-        if strategy == "kg_only":
-            if not entities and not relations:
-                answer = "抱歉，在知识图谱中没有找到相关信息。"
-            else:
-                prompt = get_kg_answer_prompt(question, entities, relations)
-                answer = self._generate_answer(prompt)
+            # 添加问答相关属性
+            span.set_attribute("question", question)
+            span.set_attribute("mode", mode)
+            span.set_attribute("n_hops", n_hops)
+            if top_k:
+                span.set_attribute("top_k", top_k)
 
-        elif strategy == "rag_only":
-            if not chunks:
-                answer = "抱歉，在文档中没有找到相关信息。"
-            else:
-                prompt = get_rag_answer_prompt(question, chunks)
-                answer = self._generate_answer(prompt)
+            # 执行检索
+            retrieval_result = self.retriever.retrieve(
+                question=question,
+                mode=mode,
+                n_hops=n_hops,
+                top_k=top_k
+            )
 
-        elif strategy == "kg_first":
-            if entities or relations:
-                # KG 信息充足，主要用 KG
-                if chunks:
-                    prompt = get_hybrid_answer_prompt(question, entities, relations, chunks)
+            # 记录检索结果统计
+            span.set_attribute("retrieval.entities_count", len(retrieval_result["entities"]))
+            span.set_attribute("retrieval.relations_count", len(retrieval_result["relations"]))
+            span.set_attribute("retrieval.chunks_count", len(retrieval_result["chunks"]))
+            span.set_attribute("retrieval.strategy", retrieval_result["strategy"])
+
+            entities = retrieval_result["entities"]
+            relations = retrieval_result["relations"]
+            chunks = retrieval_result["chunks"]
+            strategy = retrieval_result["strategy"]
+            query_type = retrieval_result.get("query_type")
+
+            # 根据策略选择 prompt
+            if strategy == "kg_only":
+                if not entities and not relations:
+                    answer = "抱歉，在知识图谱中没有找到相关信息。"
                 else:
                     prompt = get_kg_answer_prompt(question, entities, relations)
-                answer = self._generate_answer(prompt)
-            elif chunks:
-                # KG 不足，用 RAG
-                prompt = get_rag_answer_prompt(question, chunks)
-                answer = self._generate_answer(prompt)
-            else:
-                answer = "抱歉，没有找到相关信息。"
+                    answer = self._generate_answer(prompt)
 
-        elif strategy == "rag_first":
-            if chunks:
-                # RAG 信息充足
-                if entities or relations:
-                    prompt = get_hybrid_answer_prompt(question, entities, relations, chunks)
+            elif strategy == "rag_only":
+                if not chunks:
+                    answer = "抱歉，在文档中没有找到相关信息。"
                 else:
                     prompt = get_rag_answer_prompt(question, chunks)
-                answer = self._generate_answer(prompt)
-            elif entities or relations:
-                # RAG 不足，用 KG
-                prompt = get_kg_answer_prompt(question, entities, relations)
-                answer = self._generate_answer(prompt)
-            else:
-                answer = "抱歉，没有找到相关信息。"
+                    answer = self._generate_answer(prompt)
 
-        else:  # hybrid
-            if entities or relations or chunks:
-                prompt = get_hybrid_answer_prompt(question, entities, relations, chunks)
-                answer = self._generate_answer(prompt)
-            else:
-                answer = "抱歉，没有找到相关信息。请尝试上传相关文档或调整问题。"
+            elif strategy == "kg_first":
+                if entities or relations:
+                    # KG 信息充足，主要用 KG
+                    if chunks:
+                        prompt = get_hybrid_answer_prompt(question, entities, relations, chunks)
+                    else:
+                        prompt = get_kg_answer_prompt(question, entities, relations)
+                    answer = self._generate_answer(prompt)
+                elif chunks:
+                    # KG 不足，用 RAG
+                    prompt = get_rag_answer_prompt(question, chunks)
+                    answer = self._generate_answer(prompt)
+                else:
+                    answer = "抱歉，没有找到相关信息。"
 
-        # 构建来源
-        sources = self._build_sources(entities, relations, chunks)
+            elif strategy == "rag_first":
+                if chunks:
+                    # RAG 信息充足
+                    if entities or relations:
+                        prompt = get_hybrid_answer_prompt(question, entities, relations, chunks)
+                    else:
+                        prompt = get_rag_answer_prompt(question, chunks)
+                    answer = self._generate_answer(prompt)
+                elif entities or relations:
+                    # RAG 不足，用 KG
+                    prompt = get_kg_answer_prompt(question, entities, relations)
+                    answer = self._generate_answer(prompt)
+                else:
+                    answer = "抱歉，没有找到相关信息。"
 
-        return QAResponse(
-            answer=answer,
-            sources=sources,
-            query_type=query_type,
-            strategy=strategy,
-            entities=entities,
-            relations=relations,
-            chunks=chunks
-        )
+            else:  # hybrid
+                if entities or relations or chunks:
+                    prompt = get_hybrid_answer_prompt(question, entities, relations, chunks)
+                    answer = self._generate_answer(prompt)
+                else:
+                    answer = "抱歉，没有找到相关信息。请尝试上传相关文档或调整问题。"
+
+            # 构建来源
+            sources = self._build_sources(entities, relations, chunks)
+
+            # 记录答案长度
+            span.set_attribute("answer.length", len(answer))
+
+            return QAResponse(
+                answer=answer,
+                sources=sources,
+                query_type=query_type,
+                strategy=strategy,
+                entities=entities,
+                relations=relations,
+                chunks=chunks
+            )
 
     def search(
         self,

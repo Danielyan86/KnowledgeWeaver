@@ -51,6 +51,45 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+# Session 追踪中间件
+@app.middleware("http")
+async def session_tracking_middleware(request, call_next):
+    """
+    为每个 HTTP 请求创建 session 追踪
+
+    支持：
+    1. 自动生成 session_id（或从请求头读取）
+    2. 记录请求元数据（路径、方法、IP等）
+    3. 在响应头中返回 session_id
+    """
+    # 从请求头获取 session_id，或生成新的
+    session_id = request.headers.get("X-Session-ID")
+
+    # 收集会话元数据
+    metadata = {
+        "path": request.url.path,
+        "method": request.method,
+        "client_ip": request.client.host if request.client else "unknown",
+        "user_agent": request.headers.get("user-agent", "unknown")
+    }
+
+    # 开始 session 追踪
+    session_id = phoenix_tracer.start_session(session_id, metadata)
+
+    try:
+        # 处理请求
+        response = await call_next(request)
+
+        # 在响应头中返回 session_id
+        response.headers["X-Session-ID"] = session_id
+
+        return response
+    finally:
+        # 请求结束后清理 session（但不影响已创建的 span）
+        phoenix_tracer.end_session()
+
+
 # 获取存储实例
 kg_manager = get_kg_manager()
 vector_store = get_vector_store()
