@@ -172,7 +172,7 @@ class TestQAEndpoints:
     """测试问答相关端点"""
 
     @patch('backend.server.qa_engine')
-    @patch('backend.server.get_tracer')
+    @patch('backend.core.observability.get_tracer')
     def test_ask_question(self, mock_tracer, mock_qa_engine, api_client):
         """测试问答接口"""
         mock_response = MagicMock()

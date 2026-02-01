@@ -931,7 +931,12 @@
                 'question-concepts': '这个知识图谱包含哪些主要概念？',
                 'question-people': '请介绍一下图谱中的核心人物',
                 'question-relations': '有哪些重要的关系？',
-                'progress-extracting': '提取中'
+                'progress-extracting': '提取中',
+                'btn-cancel': '取消处理',
+                'toast-cancelling': '正在取消处理...',
+                'toast-cancel-success': '处理已取消',
+                'toast-cancel-failed': '取消失败',
+                'progress-cancelled': '已取消'
             },
             en: {
                 'subtitle': 'Lightweight Knowledge Graph Extraction & Visualization',
@@ -980,7 +985,12 @@
                 'question-concepts': 'What are the main concepts in this knowledge graph?',
                 'question-people': 'Tell me about the key people in the graph',
                 'question-relations': 'What are the important relationships?',
-                'progress-extracting': 'Extracting'
+                'progress-extracting': 'Extracting',
+                'btn-cancel': 'Cancel Processing',
+                'toast-cancelling': 'Cancelling...',
+                'toast-cancel-success': 'Processing cancelled',
+                'toast-cancel-failed': 'Failed to cancel',
+                'progress-cancelled': 'Cancelled'
             }
         };
 
@@ -1290,7 +1300,8 @@
                     <div style="background: #f0f0f0; height: 10px; border-radius: 5px; overflow: hidden; margin-bottom: 12px;">
                         <div id="progress-bar" style="height: 100%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); width: 0%; transition: width 0.3s;"></div>
                     </div>
-                    <p style="color: #999; font-size: 13px; margin: 0; text-align: center;" id="progress-text">${t('progress-preparing')}</p>
+                    <p style="color: #999; font-size: 13px; margin: 0 0 12px 0; text-align: center;" id="progress-text">${t('progress-preparing')}</p>
+                    <button id="cancel-btn" class="btn btn-secondary" style="width: 100%; justify-content: center;" data-i18n="btn-cancel">取消处理</button>
                 </div>
             `;
 
@@ -1298,8 +1309,59 @@
             uploadArea.style.cursor = 'default';
             uploadArea.style.pointerEvents = 'none';
 
+            // 添加取消按钮事件监听器
+            setTimeout(() => {
+                const cancelBtn = document.getElementById('cancel-btn');
+                if (cancelBtn) {
+                    cancelBtn.addEventListener('click', () => cancelProcessing(docId));
+                }
+            }, 100);
+
             // 开始轮询进度
             pollProgress(docId);
+        }
+
+        async function cancelProcessing(docId) {
+            showToast(t('toast-cancelling'), 'info');
+
+            try {
+                const response = await fetch(buildApiUrl(`/documents/cancel/${docId}`), {
+                    method: 'POST'
+                });
+
+                if (response.ok) {
+                    // 停止轮询
+                    if (progressPollingInterval) {
+                        clearInterval(progressPollingInterval);
+                    }
+
+                    // 更新UI
+                    const progressText = document.getElementById('progress-text');
+                    if (progressText) {
+                        progressText.textContent = t('progress-cancelled');
+                        progressText.style.color = '#f44336';
+                    }
+
+                    showToast(t('toast-cancel-success'), 'success');
+
+                    // 恢复上传区域
+                    setTimeout(() => {
+                        const uploadArea = document.getElementById('uploadArea');
+                        if (uploadArea && uploadAreaOriginalContent) {
+                            uploadArea.innerHTML = uploadAreaOriginalContent;
+                            uploadArea.style.cursor = 'pointer';
+                            uploadArea.style.pointerEvents = 'auto';
+                        }
+                        setLoading(false);
+                    }, 2000);
+                } else {
+                    const error = await response.json();
+                    showToast(`${t('toast-cancel-failed')}: ${error.detail}`, 'error');
+                }
+            } catch (error) {
+                console.error('取消处理失败:', error);
+                showToast(`${t('toast-cancel-failed')}: ${error.message}`, 'error');
+            }
         }
 
         async function pollProgress(docId) {
@@ -1361,6 +1423,24 @@
                                 loadStats();
                                 showToast(t('toast-process-complete'), 'success');
                             }, 1000);
+                        } else if (progress.status === 'cancelled') {
+                            if (progressPollingInterval) {
+                                clearInterval(progressPollingInterval);
+                            }
+                            if (progressText) {
+                                progressText.textContent = t('progress-cancelled');
+                                progressText.style.color = '#f44336';
+                            }
+                            setTimeout(() => {
+                                // 恢复上传区域
+                                const uploadArea = document.getElementById('uploadArea');
+                                if (uploadArea && uploadAreaOriginalContent) {
+                                    uploadArea.innerHTML = uploadAreaOriginalContent;
+                                    uploadArea.style.cursor = 'pointer';
+                                    uploadArea.style.pointerEvents = 'auto';
+                                }
+                                setLoading(false);
+                            }, 2000);
                         } else if (progress.status === 'failed') {
                             if (progressPollingInterval) {
                                 clearInterval(progressPollingInterval);

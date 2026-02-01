@@ -431,18 +431,23 @@ class AsyncKnowledgeGraphExtractor:
 
     async def extract_document_async(self, file_path: str, resume: bool = True,
                                      return_chunks: bool = False,
-                                     progress_callback: callable = None) -> Dict:
+                                     progress_callback: callable = None,
+                                     cancellation_check: callable = None) -> Dict:
         """
-        异步文档处理（支持断点续传）
+        异步文档处理（支持断点续传和中断）
 
         Args:
             file_path: 文档路径
             resume: 是否从断点续传
             return_chunks: 是否返回原始 chunks（用于 RAG 索引）
             progress_callback: 进度回调函数 callback(current, total, stage)
+            cancellation_check: 中断检查函数 cancellation_check() -> bool
 
         Returns:
             提取并规范化后的图谱数据
+
+        Raises:
+            Exception: 如果处理被中断
         """
         path = Path(file_path)
 
@@ -508,6 +513,11 @@ class AsyncKnowledgeGraphExtractor:
         if tasks:
             print(f"开始异步处理 {len(tasks)} 个未完成的块...")
             for idx, (i, task_coro) in enumerate(tqdm(tasks, desc="提取知识图谱")):
+                # 检查是否被取消
+                if cancellation_check and cancellation_check():
+                    print(f"\n⚠️  处理被用户中断 (已完成 {completed + idx}/{total} 块)")
+                    raise Exception("处理被用户中断")
+
                 result = await task_coro
                 results[i] = result
 

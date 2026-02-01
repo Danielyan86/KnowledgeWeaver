@@ -521,6 +521,11 @@ async def process_document_async(file_path: str, doc_id: str):
                 # 更新进度
                 progress_tracker.update(doc_id, current, stage)
 
+        # 定义中断检查
+        def check_cancellation() -> bool:
+            """检查是否被取消"""
+            return progress_tracker.is_cancelled(doc_id)
+
         extractor = AsyncKnowledgeGraphExtractor()
 
         # 提取图谱，同时返回 chunks 用于 RAG 索引
@@ -528,7 +533,8 @@ async def process_document_async(file_path: str, doc_id: str):
             file_path,
             resume=True,
             return_chunks=True,
-            progress_callback=update_progress
+            progress_callback=update_progress,
+            cancellation_check=check_cancellation
         )
 
         # 获取 chunks 并移除（不保存到图谱文件）
@@ -641,6 +647,40 @@ async def get_document_progress(doc_id: str):
         raise HTTPException(status_code=404, detail=f"未找到文档 {doc_id} 的处理进度")
 
     return progress
+
+
+@app.post("/documents/cancel/{doc_id}")
+async def cancel_document_processing(doc_id: str):
+    """
+    取消文档处理
+
+    Args:
+        doc_id: 文档 ID
+
+    Returns:
+        取消结果
+    """
+    progress = progress_tracker.get(doc_id)
+
+    if not progress:
+        raise HTTPException(status_code=404, detail=f"未找到文档 {doc_id} 的处理进度")
+
+    # 检查状态
+    status = progress.get("status")
+    if status in ["completed", "failed", "cancelled"]:
+        raise HTTPException(
+            status_code=400,
+            detail=f"文档已处于 {status} 状态，无法取消"
+        )
+
+    # 标记为取消
+    progress_tracker.cancel(doc_id)
+
+    return {
+        "success": True,
+        "doc_id": doc_id,
+        "message": "已发送取消信号，处理将在当前批次完成后停止"
+    }
 
 
 # Serve specific static files before mounting catch-all

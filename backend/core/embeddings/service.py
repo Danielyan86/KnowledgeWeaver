@@ -3,16 +3,15 @@ Embedding Service
 向量嵌入服务
 
 功能：
-- 调用 OpenAI 兼容 API 生成 embedding
+- 支持 Gemini 和 OpenAI 兼容 API 生成 embedding
 - 批量处理 + 缓存
+- Gemini 速度更快，推荐使用
 """
 
 import os
 import hashlib
 from typing import List, Dict, Optional
-from functools import lru_cache
 
-from openai import OpenAI
 from dotenv import load_dotenv
 
 
@@ -20,18 +19,27 @@ load_dotenv()
 
 
 class EmbeddingService:
-    """Embedding 服务"""
+    """Embedding 服务（支持 Gemini 和 OpenAI）"""
 
     def __init__(self):
         """初始化 Embedding 服务"""
-        api_base = os.getenv('LLM_BINDING_HOST', 'https://space.ai-builders.com/backend/v1')
-        api_key = os.getenv('LLM_BINDING_API_KEY', '')
-        self.model = os.getenv('EMBEDDING_MODEL', 'text-embedding-ada-002')
+        # 选择后端：gemini 或 openai
+        self.backend = os.getenv('EMBEDDING_BACKEND', 'gemini')
 
-        self.client = OpenAI(
-            base_url=api_base,
-            api_key=api_key
-        )
+        if self.backend == 'gemini':
+            # Gemini Embedding
+            from google import genai
+            self.client = genai.Client(api_key=os.getenv('GEMINI_API_KEY'))
+            self.model = os.getenv('GEMINI_EMBEDDING_MODEL', 'text-embedding-004')
+            print(f"✅ 使用 Gemini Embedding: {self.model}")
+        else:
+            # OpenAI 兼容 Embedding
+            from openai import OpenAI
+            api_base = os.getenv('LLM_BINDING_HOST', 'https://space.ai-builders.com/backend/v1')
+            api_key = os.getenv('LLM_BINDING_API_KEY', '')
+            self.model = os.getenv('EMBEDDING_MODEL', 'text-embedding-ada-002')
+            self.client = OpenAI(base_url=api_base, api_key=api_key)
+            print(f"✅ 使用 OpenAI 兼容 Embedding: {self.model}")
 
         # 内存缓存
         self._cache: Dict[str, List[float]] = {}
@@ -61,11 +69,20 @@ class EmbeddingService:
             return self._cache[cache_key]
 
         try:
-            response = self.client.embeddings.create(
-                model=self.model,
-                input=text
-            )
-            embedding = response.data[0].embedding
+            if self.backend == 'gemini':
+                # Gemini API
+                result = self.client.models.embed_content(
+                    model=self.model,
+                    content=text
+                )
+                embedding = result.embeddings[0].values
+            else:
+                # OpenAI 兼容 API
+                response = self.client.embeddings.create(
+                    model=self.model,
+                    input=text
+                )
+                embedding = response.data[0].embedding
 
             # 存入缓存
             self._cache[cache_key] = embedding
@@ -110,29 +127,54 @@ class EmbeddingService:
         new_embeddings = {}
         if valid_texts:
             try:
-                # 分批处理，每批最多100个
-                batch_size = 100
-                for batch_start in range(0, len(valid_texts), batch_size):
-                    batch_end = min(batch_start + batch_size, len(valid_texts))
-                    batch_texts = valid_texts[batch_start:batch_end]
-                    batch_indices = text_indices[batch_start:batch_end]
+                if self.backend == 'gemini':
+                    # Gemini 批量 embedding
+                    # 注意：Gemini 单次可以处理更多文本
+                    batch_size = 100
+                    for batch_start in range(0, len(valid_texts), batch_size):
+                        batch_end = min(batch_start + batch_size, len(valid_texts))
+                        batch_texts = valid_texts[batch_start:batch_end]
+                        batch_indices = text_indices[batch_start:batch_end]
 
-                    response = self.client.embeddings.create(
-                        model=self.model,
-                        input=batch_texts
-                    )
+                        result = self.client.models.embed_content(
+                            model=self.model,
+                            content=batch_texts
+                        )
 
-                    for j, emb_data in enumerate(response.data):
-                        original_idx = batch_indices[j]
-                        embedding = emb_data.embedding
-                        new_embeddings[original_idx] = embedding
+                        for j, emb in enumerate(result.embeddings):
+                            original_idx = batch_indices[j]
+                            embedding = emb.values
+                            new_embeddings[original_idx] = embedding
 
-                        # 存入缓存
-                        cache_key = self._get_cache_key(batch_texts[j])
-                        self._cache[cache_key] = embedding
+                            # 存入缓存
+                            cache_key = self._get_cache_key(batch_texts[j])
+                            self._cache[cache_key] = embedding
+                else:
+                    # OpenAI 兼容批量 embedding
+                    batch_size = 100
+                    for batch_start in range(0, len(valid_texts), batch_size):
+                        batch_end = min(batch_start + batch_size, len(valid_texts))
+                        batch_texts = valid_texts[batch_start:batch_end]
+                        batch_indices = text_indices[batch_start:batch_end]
+
+                        response = self.client.embeddings.create(
+                            model=self.model,
+                            input=batch_texts
+                        )
+
+                        for j, emb_data in enumerate(response.data):
+                            original_idx = batch_indices[j]
+                            embedding = emb_data.embedding
+                            new_embeddings[original_idx] = embedding
+
+                            # 存入缓存
+                            cache_key = self._get_cache_key(batch_texts[j])
+                            self._cache[cache_key] = embedding
 
             except Exception as e:
                 print(f"批量 Embedding 生成失败: {e}")
+                import traceback
+                traceback.print_exc()
 
         # 组合结果
         results = []

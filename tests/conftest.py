@@ -75,7 +75,11 @@ def mock_env_vars(monkeypatch):
     monkeypatch.setenv("USE_NEO4J", "false")
     monkeypatch.setenv("LLM_BINDING_HOST", "https://api.example.com/v1")
     monkeypatch.setenv("LLM_BINDING_API_KEY", "test-key")
+
+    # Embedding 配置 - 使用 openai 作为测试后端
+    monkeypatch.setenv("EMBEDDING_BACKEND", "openai")
     monkeypatch.setenv("EMBEDDING_MODEL", "text-embedding-ada-002")
+
     monkeypatch.setenv("PORT", "9621")
     monkeypatch.setenv("HOST", "127.0.0.1")
 

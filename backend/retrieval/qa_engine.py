@@ -16,6 +16,7 @@ from dataclasses import dataclass
 from openai import OpenAI
 from dotenv import load_dotenv
 from opentelemetry import trace
+from opentelemetry.trace import SpanKind
 
 from .hybrid_retriever import get_retriever, HybridRetriever
 from .prompts.qa_prompts import (
@@ -167,7 +168,10 @@ class QAEngine:
         tracer = trace.get_tracer(__name__)
 
         # 创建主 span 用于追踪整个问答流程
-        with tracer.start_as_current_span("qa_engine.ask") as span:
+        with tracer.start_as_current_span(
+            "qa_engine.ask",
+            kind=SpanKind.INTERNAL
+        ) as span:
             # 添加 session 属性
             phoenix_tracer.add_session_attributes(span)
 

@@ -93,10 +93,25 @@ class TestKnowledgeGraphManager:
     def test_load_document_success(self, manager):
         """测试成功加载文档"""
         doc_id = "test_doc"
-        manager.neo4j_storage.load_graph.return_value = {
-            "nodes": [{"id": "node1"}],
-            "edges": [{"source": "node1", "target": "node2"}]
-        }
+
+        # Mock Neo4j session and query results
+        mock_session = MagicMock()
+        mock_nodes_result = [
+            {"id": "node1", "label": "Node1", "type": "Entity",
+             "description": "Test node", "doc_ids": [doc_id]}
+        ]
+        mock_edges_result = [
+            {"source": "node1", "target": "node2", "label": "relates", "weight": 1}
+        ]
+
+        mock_session.run.side_effect = [
+            # First call returns nodes
+            MagicMock(__iter__=lambda self: iter([MagicMock(**node) for node in mock_nodes_result])),
+            # Second call returns edges
+            MagicMock(__iter__=lambda self: iter([MagicMock(**edge) for edge in mock_edges_result]))
+        ]
+
+        manager.neo4j_storage.driver.session.return_value.__enter__.return_value = mock_session
 
         graph = manager.load_document(doc_id)
 
@@ -121,10 +136,18 @@ class TestKnowledgeGraphManager:
 
     def test_list_documents(self, manager):
         """测试列出文档"""
-        manager.neo4j_storage.list_documents.return_value = [
-            {"doc_id": "doc1", "file": "test1.txt"},
-            {"doc_id": "doc2", "file": "test2.txt"}
+        # Mock Neo4j session and query results
+        mock_session = MagicMock()
+        mock_result = [
+            {"doc_id": "doc1", "node_count": 5},
+            {"doc_id": "doc2", "node_count": 3}
         ]
+
+        mock_session.run.return_value = [
+            MagicMock(**record) for record in mock_result
+        ]
+
+        manager.neo4j_storage.driver.session.return_value.__enter__.return_value = mock_session
 
         docs = manager.list_documents()
 
@@ -150,7 +173,8 @@ class TestKnowledgeGraphManager:
 
     def test_get_graph_by_label(self, manager):
         """测试按标签获取图谱"""
-        manager.neo4j_storage.get_graph_by_label = MagicMock(
+        # get_graph_by_label 调用 query_subgraph，所以要mock query_subgraph
+        manager.neo4j_storage.query_subgraph = MagicMock(
             return_value={"nodes": [], "edges": []}
         )
 
@@ -158,6 +182,7 @@ class TestKnowledgeGraphManager:
 
         assert "nodes" in graph
         assert "edges" in graph
+        manager.neo4j_storage.query_subgraph.assert_called_once_with("Person", 2)
 
     def test_get_all_graphs(self, manager):
         """测试获取全部图谱"""

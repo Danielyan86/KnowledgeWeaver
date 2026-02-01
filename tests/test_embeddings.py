@@ -15,11 +15,21 @@ class TestEmbeddingService:
     @pytest.fixture
     def mock_openai_client(self):
         """模拟 OpenAI 客户端"""
-        with patch('backend.core.embeddings.service.OpenAI') as mock_client:
-            # 模拟 embeddings.create 响应
-            mock_response = MagicMock()
-            mock_response.data = [MagicMock(embedding=[0.1, 0.2, 0.3])]
-            mock_client.return_value.embeddings.create.return_value = mock_response
+        # Patch openai.OpenAI 而不是 backend.core.embeddings.service.OpenAI
+        with patch('openai.OpenAI') as mock_client:
+            # 模拟 embeddings.create 响应（支持批量）
+            def mock_create(model, input):
+                # 如果是单个文本，返回一个嵌入
+                if isinstance(input, str):
+                    return MagicMock(data=[MagicMock(embedding=[0.1, 0.2, 0.3])])
+                # 如果是文本列表，返回多个嵌入
+                else:
+                    return MagicMock(data=[
+                        MagicMock(embedding=[0.1 * (i+1), 0.2 * (i+1), 0.3 * (i+1)])
+                        for i in range(len(input))
+                    ])
+
+            mock_client.return_value.embeddings.create.side_effect = mock_create
             yield mock_client
 
     @pytest.fixture

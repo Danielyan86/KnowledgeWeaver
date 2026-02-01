@@ -151,6 +151,44 @@ class ProgressTracker:
         with open(progress_file, 'r', encoding='utf-8') as f:
             return json.load(f)
 
+    def cancel(self, doc_id: str):
+        """
+        标记为已取消
+
+        Args:
+            doc_id: 文档 ID
+        """
+        progress_file = self._get_progress_file(doc_id)
+
+        if not progress_file.exists():
+            return
+
+        with open(progress_file, 'r', encoding='utf-8') as f:
+            progress = json.load(f)
+
+        progress["status"] = "cancelled"
+        progress["stage"] = "已取消"
+        progress["updated_at"] = datetime.now().isoformat()
+        progress["cancelled_at"] = datetime.now().isoformat()
+
+        with open(progress_file, 'w', encoding='utf-8') as f:
+            json.dump(progress, f, ensure_ascii=False, indent=2)
+
+    def is_cancelled(self, doc_id: str) -> bool:
+        """
+        检查文档是否被取消
+
+        Args:
+            doc_id: 文档 ID
+
+        Returns:
+            是否已取消
+        """
+        progress = self.get(doc_id)
+        if progress:
+            return progress.get("status") == "cancelled"
+        return False
+
     def delete(self, doc_id: str):
         """
         删除进度文件

@@ -132,15 +132,23 @@ pip install -r requirements.txt
 编辑 `.env` 文件：
 
 ```bash
-# Claude CLI 配置（使用包月套餐）
-CLAUDE_CLI_PATH=claude
-CONCURRENT_REQUESTS=5
-MAX_RETRIES=3
+# 文档提取 - Gemini API（免费，速度快）
+EXTRACTION_LLM_BACKEND=gemini
+GEMINI_API_KEY=your_gemini_api_key_here
+GEMINI_MODEL=gemini-2.0-flash
 
-# 或者使用自定义 LLM Endpoint
+# Embedding - Gemini（推荐，速度快）
+EMBEDDING_BACKEND=gemini
+GEMINI_EMBEDDING_MODEL=text-embedding-004
+
+# 问答系统 - 自定义 LLM Endpoint（包月服务）
 LLM_BINDING_HOST=https://space.ai-builders.com/backend/v1
 LLM_BINDING_API_KEY=your_api_key_here
 LLM_MODEL=deepseek
+
+# 并发配置
+CONCURRENT_REQUESTS=5
+MAX_RETRIES=3
 
 # Neo4j 配置
 USE_NEO4J=true
@@ -378,6 +386,24 @@ CHUNK_SIZE=800
 CHUNK_OVERLAP_RATIO=0.5
 ```
 
+### Embedding 配置
+
+```bash
+# 选择 Embedding 后端
+EMBEDDING_BACKEND=gemini  # gemini（推荐）或 openai
+
+# Gemini Embedding（推荐，速度快）
+GEMINI_EMBEDDING_MODEL=text-embedding-004
+
+# OpenAI 兼容 Embedding（备用）
+EMBEDDING_MODEL=text-embedding-ada-002
+```
+
+**说明：**
+- **Gemini Embedding**：速度快，免费额度高，推荐使用
+- **OpenAI 兼容 Embedding**：需要付费 API，速度较慢
+- 两种后端生成的向量维度不同，切换后端需要重新索引向量数据库
+
 ### Neo4j 配置
 
 ```bash
@@ -403,6 +429,7 @@ NEO4J_BATCH_SIZE=500
 - `GET /documents` - 列出所有文档
 - `GET /documents/{doc_id}` - 获取文档图谱
 - `GET /documents/progress/{doc_id}` - 获取处理进度
+- `POST /documents/cancel/{doc_id}` - 取消正在处理的文档
 - `DELETE /documents/{doc_id}` - 删除文档
 
 ### 图谱查询

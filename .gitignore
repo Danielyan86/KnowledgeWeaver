@@ -48,6 +48,9 @@ data/progress/
 *.db
 *.sqlite3
 
+# Video files
+video/
+
 # Phoenix database files
 data/phoenix/*.db
 data/phoenix/*.db-shm
