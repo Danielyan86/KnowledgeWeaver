@@ -16,7 +16,6 @@ from dataclasses import dataclass
 from openai import OpenAI
 from dotenv import load_dotenv
 from opentelemetry import trace
-from opentelemetry.trace import SpanKind
 
 from .hybrid_retriever import get_retriever, HybridRetriever
 from .prompts.qa_prompts import (
@@ -26,6 +25,15 @@ from .prompts.qa_prompts import (
 )
 from ..core.observability import get_tracer
 from ..core.phoenix_observability import get_phoenix_tracer
+
+# OpenInference span kinds
+try:
+    from openinference.semconv.trace import SpanKind as OpenInferenceSpanKind
+    SPAN_KIND = OpenInferenceSpanKind.CHAIN
+except ImportError:
+    # Fallback to standard OpenTelemetry SpanKind
+    from opentelemetry.trace import SpanKind
+    SPAN_KIND = SpanKind.INTERNAL
 
 
 load_dotenv()
@@ -55,6 +63,10 @@ class QAEngine:
         api_key = os.getenv('LLM_BINDING_API_KEY', '')
         self.model = os.getenv('LLM_MODEL', 'deepseek')
 
+        # 模型定价配置
+        self.cost_per_million_prompt = float(os.getenv('LLM_COST_PER_MILLION_PROMPT_TOKENS', '0.14'))
+        self.cost_per_million_completion = float(os.getenv('LLM_COST_PER_MILLION_COMPLETION_TOKENS', '0.28'))
+
         # 创建 OpenAI 客户端
         client = OpenAI(
             base_url=api_base,
@@ -66,7 +78,7 @@ class QAEngine:
         self.client = tracer.wrap_openai(client)
         self.observe = tracer.observe  # 获取 observe 装饰器
 
-    def _generate_answer(self, prompt: str) -> str:
+    def _generate_answer(self, prompt: str, parent_span=None) -> str:
         """
         调用 LLM 生成答案
 
@@ -74,6 +86,7 @@ class QAEngine:
 
         Args:
             prompt: 完整的提示词
+            parent_span: 父 span，用于记录 token 使用
 
         Returns:
             生成的答案
@@ -88,6 +101,26 @@ class QAEngine:
                 temperature=0.3,
                 max_tokens=1000
             )
+
+            # 提取 token 使用信息并添加到 span
+            if parent_span and hasattr(response, 'usage') and response.usage:
+                usage = response.usage
+                parent_span.set_attribute("llm.token_count.prompt", usage.prompt_tokens)
+                parent_span.set_attribute("llm.token_count.completion", usage.completion_tokens)
+                parent_span.set_attribute("llm.token_count.total", usage.total_tokens)
+                parent_span.set_attribute("llm.model_name", self.model)
+
+                # 计算成本
+                prompt_cost = (usage.prompt_tokens / 1_000_000) * self.cost_per_million_prompt
+                completion_cost = (usage.completion_tokens / 1_000_000) * self.cost_per_million_completion
+                total_cost = prompt_cost + completion_cost
+
+                # 添加成本属性（OpenInference 语义约定）
+                parent_span.set_attribute("llm.usage.prompt_tokens", usage.prompt_tokens)
+                parent_span.set_attribute("llm.usage.completion_tokens", usage.completion_tokens)
+                parent_span.set_attribute("llm.usage.total_tokens", usage.total_tokens)
+                parent_span.set_attribute("llm.usage.cost", total_cost)
+
             return response.choices[0].message.content.strip()
         except Exception as e:
             return f"生成答案时出错: {e}"
@@ -170,12 +203,20 @@ class QAEngine:
         # 创建主 span 用于追踪整个问答流程
         with tracer.start_as_current_span(
             "qa_engine.ask",
-            kind=SpanKind.INTERNAL
+            kind=SPAN_KIND
         ) as span:
             # 添加 session 属性
             phoenix_tracer.add_session_attributes(span)
 
+            # 添加 OpenInference 语义约定属性
+            try:
+                # 标记为 CHAIN 类型的操作
+                span.set_attribute("openinference.span.kind", "CHAIN")
+            except Exception:
+                pass
+
             # 添加问答相关属性
+            span.set_attribute("input.value", question)
             span.set_attribute("question", question)
             span.set_attribute("mode", mode)
             span.set_attribute("n_hops", n_hops)
@@ -208,14 +249,14 @@ class QAEngine:
                     answer = "抱歉，在知识图谱中没有找到相关信息。"
                 else:
                     prompt = get_kg_answer_prompt(question, entities, relations)
-                    answer = self._generate_answer(prompt)
+                    answer = self._generate_answer(prompt, span)
 
             elif strategy == "rag_only":
                 if not chunks:
                     answer = "抱歉，在文档中没有找到相关信息。"
                 else:
                     prompt = get_rag_answer_prompt(question, chunks)
-                    answer = self._generate_answer(prompt)
+                    answer = self._generate_answer(prompt, span)
 
             elif strategy == "kg_first":
                 if entities or relations:
@@ -224,11 +265,11 @@ class QAEngine:
                         prompt = get_hybrid_answer_prompt(question, entities, relations, chunks)
                     else:
                         prompt = get_kg_answer_prompt(question, entities, relations)
-                    answer = self._generate_answer(prompt)
+                    answer = self._generate_answer(prompt, span)
                 elif chunks:
                     # KG 不足，用 RAG
                     prompt = get_rag_answer_prompt(question, chunks)
-                    answer = self._generate_answer(prompt)
+                    answer = self._generate_answer(prompt, span)
                 else:
                     answer = "抱歉，没有找到相关信息。"
 
@@ -239,26 +280,27 @@ class QAEngine:
                         prompt = get_hybrid_answer_prompt(question, entities, relations, chunks)
                     else:
                         prompt = get_rag_answer_prompt(question, chunks)
-                    answer = self._generate_answer(prompt)
+                    answer = self._generate_answer(prompt, span)
                 elif entities or relations:
                     # RAG 不足，用 KG
                     prompt = get_kg_answer_prompt(question, entities, relations)
-                    answer = self._generate_answer(prompt)
+                    answer = self._generate_answer(prompt, span)
                 else:
                     answer = "抱歉，没有找到相关信息。"
 
             else:  # hybrid
                 if entities or relations or chunks:
                     prompt = get_hybrid_answer_prompt(question, entities, relations, chunks)
-                    answer = self._generate_answer(prompt)
+                    answer = self._generate_answer(prompt, span)
                 else:
                     answer = "抱歉，没有找到相关信息。请尝试上传相关文档或调整问题。"
 
             # 构建来源
             sources = self._build_sources(entities, relations, chunks)
 
-            # 记录答案长度
+            # 记录答案和输出
             span.set_attribute("answer.length", len(answer))
+            span.set_attribute("output.value", answer[:500])  # 限制长度避免过大
 
             return QAResponse(
                 answer=answer,

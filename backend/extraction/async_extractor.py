@@ -530,7 +530,7 @@ class AsyncKnowledgeGraphExtractor:
                 # 更新进度
                 if progress_callback:
                     current_completed = completed + idx + 1
-                    progress_callback(current_completed, total, f"提取中 ({current_completed}/{total})")
+                    progress_callback(current_completed, total, "提取实体和关系")
 
         # 更新进度：合并
         if progress_callback:
